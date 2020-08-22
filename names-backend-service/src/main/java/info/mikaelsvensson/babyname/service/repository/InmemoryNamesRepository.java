@@ -50,4 +50,9 @@ public class InmemoryNamesRepository implements NamesRepository {
         getNames().add(newObj);
         return newObj;
     }
+
+    @Override
+    public Name get(String nameId) throws NameException {
+        return getNames().stream().filter(u -> u.getId().equals(nameId)).findFirst().orElseThrow(() -> new NameException("Name not found"));
+    }
 }
