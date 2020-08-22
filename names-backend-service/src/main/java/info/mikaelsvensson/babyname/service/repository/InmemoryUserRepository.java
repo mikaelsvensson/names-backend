@@ -17,9 +17,17 @@ public class InmemoryUserRepository implements UserRepository {
     }
 
     @Override
-    public User add() {
+    public synchronized User add() throws UserException {
         final var user = new User();
+        if (users.stream().anyMatch(u -> u.getId().equals(user.getId()))) {
+            throw new UserException("Duplicate user id.");
+        }
         users.add(user);
         return user;
+    }
+
+    @Override
+    public User get(String userId) throws UserException {
+        return users.stream().filter(u -> u.getId().equals(userId)).findFirst().orElseThrow(() -> new UserException("User not found"));
     }
 }
