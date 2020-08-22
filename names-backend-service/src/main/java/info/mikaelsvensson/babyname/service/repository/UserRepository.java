@@ -9,5 +9,7 @@ import java.util.List;
 public interface UserRepository {
     List<User> all();
 
-    User add();
+    User add() throws UserException;
+
+    User get(String userId) throws UserException;
 }

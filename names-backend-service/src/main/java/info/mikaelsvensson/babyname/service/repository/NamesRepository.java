@@ -10,4 +10,6 @@ public interface NamesRepository {
     List<Name> all();
 
     Name add(String name, Boolean isMale, Boolean isFemale);
+
+    Name get(String nameId) throws NameException;
 }
