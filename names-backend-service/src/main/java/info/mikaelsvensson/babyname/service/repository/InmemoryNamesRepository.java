@@ -30,7 +30,8 @@ public class InmemoryNamesRepository implements NamesRepository {
                                 columns[0],
                                 !"".equals(columns[1]) ? Integer.parseInt(columns[1]) : null,
                                 "m".equals(columns[2]),
-                                "f".equals(columns[2])))
+                                "f".equals(columns[2]),
+                                null))
                         .collect(Collectors.toCollection(ArrayList::new));
             } catch (IOException e) {
                 names = new ArrayList<>();
@@ -45,8 +46,8 @@ public class InmemoryNamesRepository implements NamesRepository {
     }
 
     @Override
-    public Name add(String name, Boolean isMale, Boolean isFemale) {
-        final var newObj = new Name(name, 0, isMale, isFemale);
+    public Name add(String name, Boolean isMale, Boolean isFemale, String ownerUserId) {
+        final var newObj = new Name(name, 0, isMale, isFemale, ownerUserId);
         getNames().add(newObj);
         return newObj;
     }

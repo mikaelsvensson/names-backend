@@ -28,6 +28,6 @@ class NameTest {
     }
 
     private void testSyllableCount(String name, int expectedCount) {
-        assertEquals(new Name(name, null, null, null).syllableCount(), expectedCount);
+        assertEquals(new Name(name, null, null, null, null).syllableCount(), expectedCount);
     }
 }

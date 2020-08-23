@@ -3,16 +3,21 @@ package info.mikaelsvensson.babyname.service.model;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 
 public class NameBase {
-    private final String id;
-    protected final String name;
-    protected final Boolean isMale;
-    protected final Boolean isFemale;
+    private String id;
+    private String ownerUserId;
+    protected String name;
+    protected Boolean isMale;
+    protected Boolean isFemale;
 
-    public NameBase(String name, Boolean isMale, Boolean isFemale) {
+    public NameBase() {
+    }
+
+    public NameBase(String name, Boolean isMale, Boolean isFemale, String ownerUserId) {
         this.id = IdUtils.random();
         this.name = name;
         this.isMale = isMale;
         this.isFemale = isFemale;
+        this.ownerUserId = ownerUserId;
     }
 
     public String getId() {
@@ -33,5 +38,9 @@ public class NameBase {
 
     public int length() {
         return name.length();
+    }
+
+    public String getOwnerUserId() {
+        return ownerUserId;
     }
 }

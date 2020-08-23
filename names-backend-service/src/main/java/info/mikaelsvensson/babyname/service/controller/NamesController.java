@@ -60,11 +60,6 @@ public class NamesController {
                 .collect(Collectors.toList()));
     }
 
-    @PostMapping
-    public Name create(@RequestBody NameBase nameBase) {
-        return namesRepository.add(nameBase.getName(), nameBase.isMale(), nameBase.isFemale());
-    }
-
     public static class SearchResult {
         public List<Name> names;
 

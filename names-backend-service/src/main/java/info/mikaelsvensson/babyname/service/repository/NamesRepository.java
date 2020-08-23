@@ -9,7 +9,7 @@ import java.util.List;
 public interface NamesRepository {
     List<Name> all();
 
-    Name add(String name, Boolean isMale, Boolean isFemale);
+    Name add(String name, Boolean isMale, Boolean isFemale, String ownerUserId);
 
     Name get(String nameId) throws NameException;
 }
