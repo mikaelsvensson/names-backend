@@ -16,8 +16,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -26,7 +28,7 @@ import java.util.stream.Collectors;
 @Component
 public class ScbNameImporter {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(ScbNameImporter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ScbNameImporter.class);
 
     public static final String SYSTEM_NAME = "scbImporter";
 
@@ -44,12 +46,14 @@ public class ScbNameImporter {
     // About event listener: https://www.baeldung.com/running-setup-logic-on-startup-in-spring
     @EventListener
     public void onApplicationEvent(ContextRefreshedEvent event) {
-        try {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
             final var user = getUser();
 
-            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null).stream().map(NameBase::getName).collect(Collectors.toSet());
+            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null).stream()
+                    .map(NameBase::getName)
+                    .collect(Collectors.toSet());
 
-            Files.readAllLines(database.getFile().toPath()).stream()
+            reader.lines()
                     .map(line -> Pattern.compile(",").split(line))
                     .filter(columns -> columns.length == 3)
                     .filter(columns -> !existingNames.contains(columns[0]))
@@ -64,7 +68,6 @@ public class ScbNameImporter {
                     ))
                     .collect(Collectors.groupingBy(NameBase::getName))
                     .forEach((s, names) -> {
-
                         var maleCount = names.get(0).isMale() ? Optional.ofNullable(names.get(0).getCount()).orElse(0) : names.size() > 1 ? Optional.ofNullable(names.get(1).getCount()).orElse(0) : 0;
                         var femaleCount = names.get(0).isFemale() ? Optional.ofNullable(names.get(0).getCount()).orElse(0) : names.size() > 1 ? Optional.ofNullable(names.get(1).getCount()).orElse(0) : 0;
 
@@ -83,7 +86,7 @@ public class ScbNameImporter {
                         }
                     });
         } catch (IOException | NameException e) {
-            System.err.println(e.getMessage());
+            LOGGER.error("Error when importing names from SCB file.", e);
         }
     }
 
