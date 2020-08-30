@@ -1,0 +1,6 @@
+spring:
+  profiles:
+    active:
+      - in-memory
+server:
+  port: 8080
