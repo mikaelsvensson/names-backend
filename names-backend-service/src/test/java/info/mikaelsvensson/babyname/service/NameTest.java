@@ -1,7 +1,7 @@
 package info.mikaelsvensson.babyname.service;
 
 import info.mikaelsvensson.babyname.service.model.Name;
-import org.junit.jupiter.api.Test;
+import info.mikaelsvensson.babyname.service.util.IdUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,6 +28,6 @@ class NameTest {
     }
 
     private void testSyllableCount(String name, int expectedCount) {
-        assertEquals(new Name(name, null, null, null, null).syllableCount(), expectedCount);
+        assertEquals(new Name(name, null, null, null, IdUtils.random(), IdUtils.random(), false).syllableCount(), expectedCount);
     }
 }

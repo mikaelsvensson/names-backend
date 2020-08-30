@@ -7,9 +7,13 @@ import java.util.List;
 
 @Repository
 public interface UserRepository {
-    List<User> all();
+    List<User> all() throws UserException;
 
     User add() throws UserException;
 
+    User addSystemUser(String systemName) throws UserException;
+
     User get(String userId) throws UserException;
+
+    User getBySystemName(String systemName) throws UserException;
 }

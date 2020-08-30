@@ -1,0 +1,123 @@
+databaseChangeLog:
+  #
+  # Change set 1: Add table for users
+  #
+  - changeSet:
+      id: 001_users
+      author: mikael.svensson
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36) # An UUID is 36 chars
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: system_name
+                  type: varchar(100)
+                  constraints:
+                    nullable: true
+                    unique: true
+                    uniqueConstraintName: idx_users_name
+              - column:
+                  # Milliseconds since Jan 1st 1970 (UTC)
+                  name: created_at
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+  #
+  # Change set 2: Add table for names
+  #
+  - changeSet:
+      id: 002_names
+      author: mikael.svensson
+      changes:
+        - createTable:
+            tableName: names
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36) # An UUID is 36 chars
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_public
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_male
+                  type: boolean
+              - column:
+                  name: is_female
+                  type: boolean
+              - column:
+                  name: created_by
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_names_createdby
+                    references: users(id)
+              - column:
+                  # Milliseconds since Jan 1st 1970 (UTC)
+                  name: created_at
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: names
+            columnNames: name,created_by
+            constraintName: idx_names_uniquebyuser
+
+  #
+  # Change set 3: Add table for votes
+  #
+  - changeSet:
+      id: 003_votes
+      author: mikael.svensson
+      changes:
+        - createTable:
+            tableName: votes
+            columns:
+              - column:
+                  name: user_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_votes_userid
+                    references: users(id)
+              - column:
+                  name: name_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_votes_nameid
+                    references: names(id)
+              - column:
+                  name: type
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: strength
+                  type: bigint
+              - column:
+                  # Milliseconds since Jan 1st 1970 (UTC)
+                  name: created_at
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: votes
+            columnNames: user_id,name_id
+            constraintName: pk_votes

@@ -1,23 +1,23 @@
 package info.mikaelsvensson.babyname.service.model;
 
-import info.mikaelsvensson.babyname.service.util.IdUtils;
-
 public class NameBase {
     private String id;
     private String ownerUserId;
     protected String name;
     protected Boolean isMale;
     protected Boolean isFemale;
+    protected boolean isPublic;
 
     public NameBase() {
     }
 
-    public NameBase(String name, Boolean isMale, Boolean isFemale, String ownerUserId) {
-        this.id = IdUtils.random();
+    public NameBase(String name, Boolean isMale, Boolean isFemale, String ownerUserId, String id, boolean isPublic) {
+        this.id = id;
         this.name = name;
         this.isMale = isMale;
         this.isFemale = isFemale;
         this.ownerUserId = ownerUserId;
+        this.isPublic = isPublic;
     }
 
     public String getId() {
@@ -34,6 +34,10 @@ public class NameBase {
 
     public Boolean isFemale() {
         return isFemale;
+    }
+
+    public boolean isPublic() {
+        return isPublic;
     }
 
     public int length() {

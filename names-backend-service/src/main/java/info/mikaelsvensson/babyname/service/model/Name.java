@@ -5,8 +5,8 @@ import java.util.regex.Pattern;
 public class Name extends NameBase {
     private final Integer count;
 
-    public Name(String name, Integer count, Boolean isMale, Boolean isFemale, String ownerUserId) {
-        super(name, isMale, isFemale, ownerUserId);
+    public Name(String name, Integer count, Boolean isMale, Boolean isFemale, String ownerUserId, String id, boolean isPublic) {
+        super(name, isMale, isFemale, ownerUserId, id, isPublic);
         this.count = count;
     }
 

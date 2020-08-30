@@ -1,23 +1,27 @@
 package info.mikaelsvensson.babyname.service.model;
 
-import info.mikaelsvensson.babyname.service.util.IdUtils;
-
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 public class User {
-    private String id;
-    private OffsetDateTime createdAt;
+    private final String id;
+    private final String systemName;
+    private final Instant createdAt;
 
-    public User() {
-        id = IdUtils.random();
-        createdAt = OffsetDateTime.now();
+    public User(String id, String systemName, Instant createdAt) {
+        this.id = id;
+        this.systemName = systemName;
+        this.createdAt = createdAt;
     }
 
     public String getId() {
         return id;
     }
 
-    public OffsetDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getSystemName() {
+        return systemName;
     }
 }

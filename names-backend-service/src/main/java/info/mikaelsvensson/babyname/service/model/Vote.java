@@ -9,6 +9,12 @@ public class Vote {
     public Vote() {
     }
 
+    public Vote(String userId, String nameId, VoteType voteType) {
+        this.userId = userId;
+        this.nameId = nameId;
+        this.voteType = voteType;
+    }
+
     public Vote(String nameId, VoteType voteType) {
         this.nameId = nameId;
         this.voteType = voteType;

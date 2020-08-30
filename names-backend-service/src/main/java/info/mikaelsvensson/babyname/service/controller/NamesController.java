@@ -1,45 +1,29 @@
 package info.mikaelsvensson.babyname.service.controller;
 
 import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.model.NameBase;
+import info.mikaelsvensson.babyname.service.repository.CountRange;
+import info.mikaelsvensson.babyname.service.repository.NameException;
 import info.mikaelsvensson.babyname.service.repository.NamesRepository;
+import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 @RestController
 @RequestMapping("names")
 public class NamesController {
 
-    public static enum CountRange {
-        VERY_POPULAR(50_000, Integer.MAX_VALUE),
-        POPULAR(10_000, 50_000),
-        NOT_COMMON(1_000, 10_000),
-        UNUSUAL(100, 1_000),
-        VERY_UNUSUAL(0, 100);
-
-        private final int min;
-        private final int max;
-
-        CountRange(int min, int max) {
-            this.min = min;
-            this.max = max;
-        }
-
-        boolean inRange(Name name) {
-            return name.getCount() != null && name.getCount() >= min && name.getCount() < max;
-        }
-    }
-
-    public static enum SexFilter {
-        ANY,
-        ONLY_MALE,
-        ONLY_FEMALE,
-        UNISEX
-    }
+    private static Logger LOGGER = LoggerFactory.getLogger(NamesController.class);
 
     @Autowired
     private NamesRepository namesRepository;
@@ -47,17 +31,21 @@ public class NamesController {
     public NamesController() throws IOException {
     }
 
+    @Autowired
+    private ScbNameImporter scbNameImporter;
+
     @GetMapping
     public SearchResult get(
             @RequestParam(name = "name-prefix", required = false) String namePrefix,
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit,
             @RequestParam(name = "popularity", required = false) CountRange countRange
     ) {
-        return new SearchResult(namesRepository.all().stream()
-                .filter(name -> namePrefix == null || namePrefix.trim().length() == 0 || name.getName().toLowerCase().startsWith(namePrefix.toLowerCase()))
-                .filter(name -> countRange == null || countRange.inRange(name))
-                .limit(Math.max(0, Math.min(limit, 1000)))
-                .collect(Collectors.toList()));
+        try {
+            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, countRange));
+        } catch (NameException e) {
+            LOGGER.warn("Could not search for name", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
     }
 
     public static class SearchResult {
