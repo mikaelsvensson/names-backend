@@ -42,21 +42,29 @@ public class DbVotesRepository implements VotesRepository {
     @Override
     public void set(User user, Name name, VoteType voteType) throws VoteException {
         try {
-            namedParameterJdbcTemplate.update("INSERT INTO votes (user_id, name_id, type) VALUES (:userId, :nameId, :type)",
+            final var rowsInserted = namedParameterJdbcTemplate.update("INSERT INTO votes (user_id, name_id, type, created_at) VALUES (:userId, :nameId, :type, :createdAt)",
                     Map.of(
                             "userId", user.getId(),
                             "nameId", name.getId(),
-                            "type", voteType.name()
+                            "type", voteType.name(),
+                            "createdAt", user.getCreatedAt().toEpochMilli()
                     ));
+            if (rowsInserted != 1) {
+                throw new VoteException("Query inserted " + rowsInserted + " rows."); // Throw here, and catch right below.
+            }
             LOGGER.info("User {} cast {} vote for name {}.", user.getId(), voteType.name(), name.getId());
-        } catch (DataAccessException e) {
+        } catch (DataAccessException | VoteException e) {
+            LOGGER.warn("Failed to cast initial vote. User {} could not cast {} vote for name {}. Reason: {}.", user.getId(), voteType.name(), name.getId(), e.getMessage());
             try {
-                namedParameterJdbcTemplate.update("UPDATE votes SET type = :type WHERE user_id = :userId AND name_id = :nameId",
+                final var rowsUpdated = namedParameterJdbcTemplate.update("UPDATE votes SET type = :type WHERE user_id = :userId AND name_id = :nameId",
                         Map.of(
                                 "userId", user.getId(),
                                 "nameId", name.getId(),
                                 "type", voteType.name()
                         ));
+                if (rowsUpdated != 1) {
+                    throw new VoteException("Query updated " + rowsUpdated + " rows.");
+                }
                 LOGGER.info("User {} changed to {} vote for name {}.", user.getId(), voteType.name(), name.getId());
             } catch (DataAccessException ex) {
                 LOGGER.warn("Failed to cast vote. User {} could not change to {} vote for name {}. Reason: {}.", user.getId(), voteType.name(), name.getId(), ex.getMessage());
