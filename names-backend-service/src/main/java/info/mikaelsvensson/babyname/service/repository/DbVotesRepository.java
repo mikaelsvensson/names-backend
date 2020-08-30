@@ -4,6 +4,8 @@ import info.mikaelsvensson.babyname.service.model.Name;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.Vote;
 import info.mikaelsvensson.babyname.service.model.VoteType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
@@ -20,6 +22,8 @@ import java.util.Map;
 @Service
 @Profile("db")
 public class DbVotesRepository implements VotesRepository {
+
+    private static Logger LOGGER = LoggerFactory.getLogger(DbVotesRepository.class);
 
     @Autowired
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
@@ -38,12 +42,13 @@ public class DbVotesRepository implements VotesRepository {
     @Override
     public void set(User user, Name name, VoteType voteType) throws VoteException {
         try {
-            namedParameterJdbcTemplate.update("INSERT INTO votes (user_id, name_id, type) VALUES (:userId, :nameId, type)",
+            namedParameterJdbcTemplate.update("INSERT INTO votes (user_id, name_id, type) VALUES (:userId, :nameId, :type)",
                     Map.of(
                             "userId", user.getId(),
                             "nameId", name.getId(),
                             "type", voteType.name()
                     ));
+            LOGGER.info("User {} cast {} vote for name {}.", user.getId(), voteType.name(), name.getId());
         } catch (DataAccessException e) {
             try {
                 namedParameterJdbcTemplate.update("UPDATE votes SET type = :type WHERE user_id = :userId AND name_id = :nameId",
@@ -52,7 +57,9 @@ public class DbVotesRepository implements VotesRepository {
                                 "nameId", name.getId(),
                                 "type", voteType.name()
                         ));
+                LOGGER.info("User {} changed to {} vote for name {}.", user.getId(), voteType.name(), name.getId());
             } catch (DataAccessException ex) {
+                LOGGER.warn("Failed to cast vote. User {} could not change to {} vote for name {}. Reason: {}.", user.getId(), voteType.name(), name.getId(), ex.getMessage());
                 throw new VoteException(ex.getMessage());
             }
         }
