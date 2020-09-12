@@ -8,7 +8,7 @@ import java.util.Set;
 
 @Repository
 public interface NamesRepository {
-    List<Name> all(Set<String> userIds, String namePrefix, int limit, CountRange countRange) throws NameException;
+    List<Name> all(Set<String> userIds, String namePrefix, int limit, CountRange countRange, Set<String> voteUserIds) throws NameException;
 
     Name add(String name, Boolean isMale, Boolean isFemale, boolean isPublic, String ownerUserId) throws NameException;
 

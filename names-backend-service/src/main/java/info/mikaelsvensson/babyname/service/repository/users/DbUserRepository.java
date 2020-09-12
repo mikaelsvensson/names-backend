@@ -95,7 +95,7 @@ public class DbUserRepository implements UserRepository {
         }
     }
 
-    private static User mapper(ResultSet resultSet, int index) throws SQLException {
+    public static User mapper(ResultSet resultSet, int index) throws SQLException {
         return new User(
                 resultSet.getString("id"),
                 resultSet.getString("system_name"),

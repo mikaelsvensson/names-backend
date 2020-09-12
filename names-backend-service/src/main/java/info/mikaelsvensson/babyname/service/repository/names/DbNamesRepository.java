@@ -26,13 +26,17 @@ public class DbNamesRepository implements NamesRepository {
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
-    public List<Name> all(Set<String> userIds, String namePrefix, int limit, CountRange countRange) throws NameException {
+    public List<Name> all(Set<String> userIds, String namePrefix, int limit, CountRange countRange, Set<String> voteUserIds) throws NameException {
         try {
             final var params = new HashMap<String, Object>();
             final var sqlWhere = new StringBuilder("FALSE");
             if (namePrefix != null) {
                 sqlWhere.append(" OR LOWER(n.name) LIKE :namePrefix");
                 params.put("namePrefix", namePrefix.toLowerCase() + "%");
+            }
+            if (voteUserIds != null && !voteUserIds.isEmpty()) {
+                sqlWhere.append(" AND id IN (SELECT v.name_id FROM votes AS v WHERE v.user_id IN (:voteUserIds))");
+                params.put("voteUserIds", voteUserIds);
             }
 
             params.put("limit", limit);

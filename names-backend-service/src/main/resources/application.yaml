@@ -4,3 +4,6 @@ spring:
       - in-memory
 server:
   port: 8080
+
+actions:
+  qrUrlTemplate: "http://localhost:8081/#/{actionId}"

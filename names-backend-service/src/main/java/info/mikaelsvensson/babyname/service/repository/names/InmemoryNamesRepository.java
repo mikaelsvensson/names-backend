@@ -21,7 +21,7 @@ public class InmemoryNamesRepository implements NamesRepository {
     }
 
     @Override
-    public List<Name> all(Set<String> userIds, String namePrefix, int limit, CountRange countRange) {
+    public List<Name> all(Set<String> userIds, String namePrefix, int limit, CountRange countRange, Set<String> voteUserIds) {
         return getNames().stream()
                 .filter(name -> userIds.contains(name.getOwnerUserId()))
                 .filter(name -> namePrefix == null || namePrefix.trim().length() == 0 || name.getName().toLowerCase().startsWith(namePrefix.toLowerCase()))

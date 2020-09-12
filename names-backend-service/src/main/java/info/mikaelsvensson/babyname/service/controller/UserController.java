@@ -10,14 +10,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collection;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("users")
 public class UserController {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(UserController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -27,6 +27,12 @@ public class UserController {
 
     @Autowired
     private NamesRepository namesRepository;
+
+    @Autowired
+    private RelationshipsRepository relationshipsRepository;
+
+    @Autowired
+    private ActionsRepository actionsRepository;
 
     @Autowired
     private ScbNameImporter scbNameImporter;
@@ -51,6 +57,16 @@ public class UserController {
         }
     }
 
+    @GetMapping("/{userId}/relationships")
+    public List<User> getRelationships(@PathVariable("userId") String userId) {
+        try {
+            return relationshipsRepository.getRelatedUsers(userRepository.get(userId));
+        } catch (UserException | RelationshipException e) {
+            LOGGER.warn("Could not read relationships", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
     @PostMapping("/{userId}/votes/{nameId}")
     @ResponseStatus(HttpStatus.CREATED)
     public void setVotes(@PathVariable("userId") String userId, @PathVariable("nameId") String nameId, @RequestBody Vote vote) {
@@ -66,16 +82,23 @@ public class UserController {
     public NamesController.SearchResult get(
             @PathVariable("userId") String userId,
             @RequestParam(name = "name-prefix", required = false) String namePrefix,
+            @RequestParam(name = "voted-by", required = false) String votedBy,
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit,
             @RequestParam(name = "popularity", required = false) CountRange countRange
     ) {
         try {
+            final var user = userRepository.get(userId);
+            var userIds = new HashSet<String>();
+            userIds.add(user.getId());
+            userIds.add(scbNameImporter.getUser().getId());
+            userIds.addAll(relationshipsRepository.getRelatedUsers(user).stream().map(User::getId).collect(Collectors.toList()));
             return new NamesController.SearchResult(namesRepository.all(
-                    Set.of(userId, scbNameImporter.getUser().getId()),
+                    userIds,
                     namePrefix,
                     limit,
-                    countRange));
-        } catch (NameException e) {
+                    countRange,
+                    Set.of(Optional.ofNullable(votedBy).map(s -> s.split(",")).orElse(new String[]{}))));
+        } catch (NameException | RelationshipException | UserException e) {
             LOGGER.warn("Could search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -83,7 +106,7 @@ public class UserController {
 
     @PostMapping("/{userId}/names")
     @ResponseStatus(HttpStatus.CREATED)
-    public Name create(@PathVariable("userId") String userId, @RequestBody NameBase nameBase) {
+    public Name createName(@PathVariable("userId") String userId, @RequestBody NameBase nameBase) {
         try {
             final var name = namesRepository.add(nameBase.getName(), nameBase.isMale(), nameBase.isFemale(), nameBase.isPublic(), userId);
             votesRepository.set(userRepository.get(userId), name, VoteType.UP);
@@ -94,4 +117,14 @@ public class UserController {
         }
     }
 
+    @PostMapping("/{userId}/actions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Action createAction(@PathVariable("userId") String userId, @RequestBody Action action) {
+        try {
+            return actionsRepository.add(userRepository.get(userId), action.getType(), action.getParameters(), ActionStatus.PENDING);
+        } catch (UserException | ActionException e) {
+            LOGGER.warn("Could not create relationship", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
 }

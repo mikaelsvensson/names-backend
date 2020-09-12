@@ -121,3 +121,68 @@ databaseChangeLog:
             tableName: votes
             columnNames: user_id,name_id
             constraintName: pk_votes
+
+  #
+  # Change set 4: Add table for relationships
+  #
+  - changeSet:
+      id: 004_relationships
+      author: mikael.svensson
+      changes:
+        - createTable:
+            tableName: relationships
+            columns:
+              - column:
+                  name: user_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_relationships_userid
+                    references: users(id)
+              - column:
+                  name: related_user_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_relationships_relateduserid
+                    references: users(id)
+        - addPrimaryKey:
+            tableName: relationships
+            columnNames: user_id,related_user_id
+            constraintName: pk_relationships
+        - createTable:
+            tableName: actions
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36) # An UUID is 36 chars
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_actions
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_actions_createdby
+                    references: users(id)
+              - column:
+                  name: action
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameters
+                  type: text
+              - column:
+                  name: status
+                  type: varchar(10) # PENDING, DONE, FAILED, EXPIRED
+                  constraints:
+                    nullable: false
+              - column:
+                  # Milliseconds since Jan 1st 1970 (UTC)
+                  name: created_at
+                  type: bigint
+                  constraints:
+                    nullable: false
