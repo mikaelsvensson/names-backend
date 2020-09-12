@@ -32,7 +32,10 @@ public class DbVotesRepository implements VotesRepository {
     public List<Vote> all(User user) throws VoteException {
         try {
             return namedParameterJdbcTemplate.query(
-                    "SELECT * FROM votes",
+                    "SELECT * FROM votes WHERE user_id = :userId",
+                    Map.of(
+                            "userId", user.getId()
+                    ),
                     DbVotesRepository::mapper);
         } catch (DataAccessException e) {
             throw new VoteException(e.getMessage());

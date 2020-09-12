@@ -29,9 +29,10 @@ public class DbNamesRepository implements NamesRepository {
     public List<Name> all(Set<String> userIds, String namePrefix, int limit, CountRange countRange, Set<String> voteUserIds) throws NameException {
         try {
             final var params = new HashMap<String, Object>();
-            final var sqlWhere = new StringBuilder("FALSE");
+            final var sqlWhere = new StringBuilder("TRUE");
             if (namePrefix != null) {
-                sqlWhere.append(" OR LOWER(n.name) LIKE :namePrefix");
+                sqlWhere.append(" AND LOWER(n.name) LIKE :namePrefix");
+
                 params.put("namePrefix", namePrefix.toLowerCase() + "%");
             }
             if (voteUserIds != null && !voteUserIds.isEmpty()) {

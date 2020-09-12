@@ -49,9 +49,11 @@ public class ScbNameImporter {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
             final var user = getUser();
 
-            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null).stream()
+            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null, null).stream()
                     .map(NameBase::getName)
                     .collect(Collectors.toSet());
+
+            LOGGER.info("Database contains {} names from SCB.", existingNames.size());
 
             reader.lines()
                     .map(line -> Pattern.compile(",").split(line))
@@ -82,7 +84,7 @@ public class ScbNameImporter {
                                     firstName.isPublic(),
                                     firstName.getOwnerUserId());
                         } catch (NameException e) {
-                            LOGGER.warn("Could not add " + firstName.getName());
+                            LOGGER.warn("Could not add " + firstName.getName() + " because of this: " + e.getMessage());
                         }
                     });
         } catch (IOException | NameException e) {
