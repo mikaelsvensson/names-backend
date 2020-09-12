@@ -1,9 +1,9 @@
 package info.mikaelsvensson.babyname.service.controller;
 
 import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.repository.CountRange;
-import info.mikaelsvensson.babyname.service.repository.NameException;
-import info.mikaelsvensson.babyname.service.repository.NamesRepository;
+import info.mikaelsvensson.babyname.service.repository.names.CountRange;
+import info.mikaelsvensson.babyname.service.repository.names.NameException;
+import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +41,7 @@ public class NamesController {
             @RequestParam(name = "popularity", required = false) CountRange countRange
     ) {
         try {
-            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, countRange));
+            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, countRange, null));
         } catch (NameException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

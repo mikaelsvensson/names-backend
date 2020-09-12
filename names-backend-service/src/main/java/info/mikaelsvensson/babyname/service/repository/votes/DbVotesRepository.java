@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.repository;
+package info.mikaelsvensson.babyname.service.repository.votes;
 
 import info.mikaelsvensson.babyname.service.model.Name;
 import info.mikaelsvensson.babyname.service.model.User;

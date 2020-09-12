@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.repository;
+package info.mikaelsvensson.babyname.service.repository.users;
 
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.util.IdUtils;

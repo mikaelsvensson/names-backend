@@ -1,7 +1,18 @@
 package info.mikaelsvensson.babyname.service.controller;
 
 import info.mikaelsvensson.babyname.service.model.*;
-import info.mikaelsvensson.babyname.service.repository.*;
+import info.mikaelsvensson.babyname.service.repository.actions.ActionException;
+import info.mikaelsvensson.babyname.service.repository.actions.ActionStatus;
+import info.mikaelsvensson.babyname.service.repository.actions.ActionsRepository;
+import info.mikaelsvensson.babyname.service.repository.names.CountRange;
+import info.mikaelsvensson.babyname.service.repository.names.NameException;
+import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
+import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
+import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
+import info.mikaelsvensson.babyname.service.repository.users.UserException;
+import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
+import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
+import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
 import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
