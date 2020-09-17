@@ -1,7 +1,7 @@
 package info.mikaelsvensson.babyname.service.util;
 
+import info.mikaelsvensson.babyname.service.model.AttributeKey;
 import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.model.NameBase;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
@@ -20,13 +20,28 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
 public class ScbNameImporter {
+
+    private static class FileEntry {
+        private final String name;
+        private final boolean isMale;
+        private final boolean isFemale;
+        private final long count;
+
+        public FileEntry(String name, boolean isMale, boolean isFemale, long count) {
+            this.name = name;
+            this.isMale = isMale;
+            this.isFemale = isFemale;
+            this.count = count;
+        }
+    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScbNameImporter.class);
 
@@ -49,42 +64,48 @@ public class ScbNameImporter {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
             final var user = getUser();
 
-            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null, null).stream()
-                    .map(NameBase::getName)
+            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null).stream()
+                    .map(Name::getName)
                     .collect(Collectors.toSet());
 
             LOGGER.info("Database contains {} names from SCB.", existingNames.size());
 
-            reader.lines()
+            final var fileEntries = reader.lines()
                     .map(line -> Pattern.compile(",").split(line))
                     .filter(columns -> columns.length == 3)
                     .filter(columns -> !existingNames.contains(columns[0]))
-                    .map(columns -> new Name(
+                    .map(columns -> new FileEntry(
                             columns[0],
-                            !"".equals(columns[1]) ? Integer.parseInt(columns[1]) : null,
                             "m".equals(columns[2]),
                             "f".equals(columns[2]),
-                            user.getId(),
-                            IdUtils.random(),
-                            true
+                            !"".equals(columns[1]) ? Long.parseLong(columns[1]) : 0
                     ))
-                    .collect(Collectors.groupingBy(NameBase::getName))
-                    .forEach((s, names) -> {
-                        var maleCount = names.get(0).isMale() ? Optional.ofNullable(names.get(0).getCount()).orElse(0) : names.size() > 1 ? Optional.ofNullable(names.get(1).getCount()).orElse(0) : 0;
-                        var femaleCount = names.get(0).isFemale() ? Optional.ofNullable(names.get(0).getCount()).orElse(0) : names.size() > 1 ? Optional.ofNullable(names.get(1).getCount()).orElse(0) : 0;
+                    .collect(Collectors.toSet());
 
-                        var firstName = names.get(0);
-                        var secondName = names.size() > 1 ? names.get(1) : null;
+            final var totalPeopleCount = fileEntries.stream().mapToLong(fileEntry -> fileEntry.count).sum();
+
+            fileEntries.stream()
+                    .collect(Collectors.groupingBy(fileEntry -> fileEntry.name))
+                    .forEach((s, entries) -> {
+                        var maleCount = entries.get(0).isMale ? entries.get(0).count : entries.size() > 1 ? entries.get(1).count : 0;
+                        var femaleCount = entries.get(0).isFemale ? entries.get(0).count : entries.size() > 1 ? entries.get(1).count : 0;
+
+                        var firstName = entries.get(0);
+                        var secondName = entries.size() > 1 ? entries.get(1) : null;
                         var ratio = 1.0 * Math.min(maleCount, femaleCount) / Math.max(maleCount, femaleCount);
                         try {
-                            namesRepository.add(
-                                    firstName.getName(),
-                                    ratio > 0.1 || maleCount > femaleCount,
-                                    ratio > 0.1 || femaleCount > maleCount,
-                                    firstName.isPublic(),
-                                    firstName.getOwnerUserId());
+                            final var name = namesRepository.add(
+                                    firstName.name,
+                                    user.getId(),
+                                    Collections.emptySet());
+                            namesRepository.setNumericAttributes(name, user, Map.of(
+                                    AttributeKey.SCB_PERCENT_OF_POPULATION,
+                                    1.0 * (femaleCount + maleCount) / totalPeopleCount,
+                                    AttributeKey.SCB_PERCENT_WOMEN,
+                                    1.0 * femaleCount / (femaleCount + maleCount)
+                            ));
                         } catch (NameException e) {
-                            LOGGER.warn("Could not add " + firstName.getName() + " because of this: " + e.getMessage());
+                            LOGGER.warn("Could not add " + firstName.name + " because of this: " + e.getMessage());
                         }
                     });
         } catch (IOException | NameException e) {
