@@ -25,7 +25,6 @@ import java.util.Map;
 
 @Repository
 @Service
-@Profile("db")
 public class DbActionsRepository implements ActionsRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DbActionsRepository.class);

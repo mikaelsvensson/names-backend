@@ -3,7 +3,6 @@ package info.mikaelsvensson.babyname.service.repository.votes;
 import info.mikaelsvensson.babyname.service.model.Name;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.Vote;
-import info.mikaelsvensson.babyname.service.model.VoteType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +19,6 @@ import java.util.Map;
 
 @Repository
 @Service
-@Profile("db")
 public class DbVotesRepository implements VotesRepository {
 
     private static Logger LOGGER = LoggerFactory.getLogger(DbVotesRepository.class);

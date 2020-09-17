@@ -17,7 +17,6 @@ import java.util.Map;
 
 @Repository
 @Service
-@Profile("db")
 public class DbUserRepository implements UserRepository {
 
     @Autowired
