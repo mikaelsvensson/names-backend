@@ -1,23 +1,21 @@
 package info.mikaelsvensson.babyname.service.model;
 
 public class Vote {
+
+    public static final Long VALUE_UP = 100L;
+    public static final Long VALUE_DOWN = -100L;
+
     private String userId;
     private String nameId;
-    private VoteType voteType;
-    private int voteStrength;
+    private Long value;
 
     public Vote() {
     }
 
-    public Vote(String userId, String nameId, VoteType voteType) {
+    public Vote(String userId, String nameId, Long value) {
         this.userId = userId;
         this.nameId = nameId;
-        this.voteType = voteType;
-    }
-
-    public Vote(String nameId, VoteType voteType) {
-        this.nameId = nameId;
-        this.voteType = voteType;
+        this.value = value;
     }
 
     public String getUserId() {
@@ -36,19 +34,11 @@ public class Vote {
         this.nameId = nameId;
     }
 
-    public VoteType getVoteType() {
-        return voteType;
+    public Long getValue() {
+        return value;
     }
 
-    public void setVoteType(VoteType voteType) {
-        this.voteType = voteType;
-    }
-
-    public int getVoteStrength() {
-        return voteStrength;
-    }
-
-    public void setVoteStrength(int voteStrength) {
-        this.voteStrength = voteStrength;
+    public void setValue(Long value) {
+        this.value = value;
     }
 }

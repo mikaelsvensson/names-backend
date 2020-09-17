@@ -11,5 +11,5 @@ import java.util.List;
 public interface VotesRepository {
     List<Vote> all(User user) throws VoteException;
 
-    void set(User user, Name name, VoteType voteType) throws VoteException;
+    void set(User user, Name name, Long value) throws VoteException;
 }

@@ -81,7 +81,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.CREATED)
     public void setVotes(@PathVariable("userId") String userId, @PathVariable("nameId") String nameId, @RequestBody Vote vote) {
         try {
-            votesRepository.set(userRepository.get(userId), namesRepository.get(nameId), vote.getVoteType());
+            votesRepository.set(userRepository.get(userId), namesRepository.get(nameId), vote.getValue());
         } catch (UserException | NameException | VoteException e) {
             LOGGER.warn("Could not cast vote", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
