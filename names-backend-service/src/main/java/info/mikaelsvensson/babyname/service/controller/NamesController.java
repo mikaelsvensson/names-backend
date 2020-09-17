@@ -1,7 +1,6 @@
 package info.mikaelsvensson.babyname.service.controller;
 
 import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.repository.names.CountRange;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
@@ -37,11 +36,10 @@ public class NamesController {
     @GetMapping
     public SearchResult get(
             @RequestParam(name = "name-prefix", required = false) String namePrefix,
-            @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit,
-            @RequestParam(name = "popularity", required = false) CountRange countRange
+            @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
         try {
-            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, countRange, null));
+            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, null));
         } catch (NameException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

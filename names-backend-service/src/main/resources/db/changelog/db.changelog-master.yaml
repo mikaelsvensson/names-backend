@@ -30,12 +30,15 @@ databaseChangeLog:
                     nullable: false
 
   #
-  # Change set 2: Add table for names
+  # Change set 2: Add tables for names, their owners and their (numeric) attributes
   #
   - changeSet:
       id: 002_names
       author: mikael.svensson
       changes:
+        #
+        # NAMES
+        #
         - createTable:
             tableName: names
             columns:
@@ -50,23 +53,30 @@ databaseChangeLog:
                   type: varchar(100)
                   constraints:
                     nullable: false
+        - addUniqueConstraint:
+            tableName: names
+            columnNames: name
+            constraintName: idx_names_name
+
+        #
+        # NAME_OWNERS
+        #
+        - createTable:
+            tableName: name_owners
+            columns:
               - column:
-                  name: is_public
-                  type: boolean
-                  constraints:
-                    nullable: false
-              - column:
-                  name: is_male
-                  type: boolean
-              - column:
-                  name: is_female
-                  type: boolean
-              - column:
-                  name: created_by
+                  name: name_id
                   type: varchar(36)
                   constraints:
                     nullable: false
-                    foreignKeyName: fk_names_createdby
+                    foreignKeyName: fk_nameowners_nameid
+                    references: names(id)
+              - column:
+                  name: user_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_nameowners_userid
                     references: users(id)
               - column:
                   # Milliseconds since Jan 1st 1970 (UTC)
@@ -74,10 +84,57 @@ databaseChangeLog:
                   type: bigint
                   constraints:
                     nullable: false
-        - addUniqueConstraint:
-            tableName: names
-            columnNames: name,created_by
-            constraintName: idx_names_uniquebyuser
+        - addPrimaryKey:
+            tableName: name_owners
+            columnNames: name_id,user_id
+            constraintName: pk_nameowners
+
+
+        #
+        # NAME_ATTRIBUTES_FLOAT
+        #
+        - createTable:
+            tableName: name_attributes_float
+            columns:
+              - column:
+                  name: name_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_nameattributesfloat_nameid
+                    references: names(id)
+              - column:
+                  name: key
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  type: double
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_nameattributesfloat_createdby
+                    references: users(id)
+              - column:
+                  # Milliseconds since Jan 1st 1970 (UTC)
+                  name: created_at
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: name_attributes_float
+            columnNames: name_id,key
+            constraintName: pk_nameattributesfloat
+        - createIndex:
+            tableName: name_attributes_float
+            columns:
+              - name: value
+            indexName: idx_nameattributesfloat_value
 
   #
   # Change set 3: Add table for votes
@@ -104,16 +161,19 @@ databaseChangeLog:
                     foreignKeyName: fk_votes_nameid
                     references: names(id)
               - column:
-                  name: type
-                  type: varchar(10)
+                  name: value
+                  type: bigint
                   constraints:
                     nullable: false
               - column:
-                  name: strength
-                  type: bigint
-              - column:
                   # Milliseconds since Jan 1st 1970 (UTC)
                   name: created_at
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  # Milliseconds since Jan 1st 1970 (UTC)
+                  name: updated_at
                   type: bigint
                   constraints:
                     nullable: false

@@ -4,7 +4,6 @@ import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionException;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionStatus;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionsRepository;
-import info.mikaelsvensson.babyname.service.repository.names.CountRange;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
@@ -94,8 +93,7 @@ public class UserController {
             @PathVariable("userId") String userId,
             @RequestParam(name = "name-prefix", required = false) String namePrefix,
             @RequestParam(name = "voted-by", required = false) String votedBy,
-            @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit,
-            @RequestParam(name = "popularity", required = false) CountRange countRange
+            @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
         try {
             final var user = userRepository.get(userId);
@@ -107,7 +105,6 @@ public class UserController {
                     userIds,
                     namePrefix,
                     limit,
-                    countRange,
                     Set.of(Optional.ofNullable(votedBy).map(s -> s.split(",")).orElse(new String[]{}))));
         } catch (NameException | RelationshipException | UserException e) {
             LOGGER.warn("Could search for name", e);
@@ -117,10 +114,11 @@ public class UserController {
 
     @PostMapping("/{userId}/names")
     @ResponseStatus(HttpStatus.CREATED)
-    public Name createName(@PathVariable("userId") String userId, @RequestBody NameBase nameBase) {
+    public Name createName(@PathVariable("userId") String userId, @RequestBody Name nameBase) {
         try {
-            final var name = namesRepository.add(nameBase.getName(), nameBase.isMale(), nameBase.isFemale(), nameBase.isPublic(), userId);
-            votesRepository.set(userRepository.get(userId), name, VoteType.UP);
+            final var name = namesRepository.add(nameBase.getName(), userId, Collections.emptySet());
+            final var user = userRepository.get(userId);
+            votesRepository.set(user, name, Vote.VALUE_UP);
             return name;
         } catch (UserException | NameException | VoteException e) {
             LOGGER.warn("Could not add name", e);

@@ -1,20 +1,40 @@
 package info.mikaelsvensson.babyname.service.model;
 
-import java.util.regex.Pattern;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
-public class Name extends NameBase {
-    private final Integer count;
+public class Name {
+    private String id;
+    protected String name;
+    private Set<Attribute<?>> attributes;
 
-    public Name(String name, Integer count, Boolean isMale, Boolean isFemale, String ownerUserId, String id, boolean isPublic) {
-        super(name, isMale, isFemale, ownerUserId, id, isPublic);
-        this.count = count;
+    public Name() {
     }
 
-    public Integer getCount() {
-        return count;
+    public Name(String name, String id, Set<Attribute<?>> attributes) {
+        this.id = id;
+        this.name = name;
+        this.attributes = attributes;
     }
 
-    public int syllableCount() {
-        return Pattern.compile("[aeiouyåäöAEIOUYÅÄÖ]+").split(name).length;
+    public Optional<Attribute<?>> getAttribute(AttributeKey key) {
+        return attributes.stream().filter(attribute -> attribute.getKey().equals(key)).findFirst();
+    }
+
+    public void addAttribute(Attribute<?> attribute) {
+        attributes.add(attribute);
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Set<Attribute<?>> getAttributes() {
+        return attributes;
     }
 }
