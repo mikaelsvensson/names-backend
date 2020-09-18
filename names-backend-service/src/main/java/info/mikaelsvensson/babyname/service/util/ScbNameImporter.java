@@ -1,5 +1,6 @@
 package info.mikaelsvensson.babyname.service.util;
 
+import info.mikaelsvensson.babyname.service.model.Attribute;
 import info.mikaelsvensson.babyname.service.model.AttributeKey;
 import info.mikaelsvensson.babyname.service.model.Name;
 import info.mikaelsvensson.babyname.service.model.User;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -64,16 +66,14 @@ public class ScbNameImporter {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
             final var user = getUser();
 
-            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null).stream()
-                    .map(Name::getName)
-                    .collect(Collectors.toSet());
+            final var existingNames = namesRepository.all(Set.of(user.getId()), null, Integer.MAX_VALUE, null, null).stream()
+                    .collect(Collectors.groupingBy(Name::getName));
 
             LOGGER.info("Database contains {} names from SCB.", existingNames.size());
 
             final var fileEntries = reader.lines()
                     .map(line -> Pattern.compile(",").split(line))
                     .filter(columns -> columns.length == 3)
-                    .filter(columns -> !existingNames.contains(columns[0]))
                     .map(columns -> new FileEntry(
                             columns[0],
                             "m".equals(columns[2]),
@@ -91,19 +91,39 @@ public class ScbNameImporter {
                         var femaleCount = entries.get(0).isFemale ? entries.get(0).count : entries.size() > 1 ? entries.get(1).count : 0;
 
                         var firstName = entries.get(0);
-                        var secondName = entries.size() > 1 ? entries.get(1) : null;
-                        var ratio = 1.0 * Math.min(maleCount, femaleCount) / Math.max(maleCount, femaleCount);
+                        final var countTotal = femaleCount + maleCount;
+
                         try {
-                            final var name = namesRepository.add(
-                                    firstName.name,
-                                    user.getId(),
-                                    Collections.emptySet());
-                            namesRepository.setNumericAttributes(name, user, Map.of(
+                            var name = existingNames.get(firstName.name).stream().findFirst().orElse(null);
+                            if (name == null) {
+                                name = namesRepository.add(firstName.name, user.getId(), Collections.emptySet());
+                            }
+
+                            final var expectedAttrs = new HashMap<AttributeKey, Double>();
+                            expectedAttrs.put(
                                     AttributeKey.SCB_PERCENT_OF_POPULATION,
-                                    1.0 * (femaleCount + maleCount) / totalPeopleCount,
+                                    1.0 * (femaleCount + maleCount) / totalPeopleCount);
+                            expectedAttrs.put(
                                     AttributeKey.SCB_PERCENT_WOMEN,
-                                    1.0 * femaleCount / (femaleCount + maleCount)
-                            ));
+                                    countTotal > 0 ? 1.0 * femaleCount / countTotal : null);
+                            for (Map.Entry<AttributeKey, Double> entry : expectedAttrs.entrySet()) {
+                                final var key = entry.getKey();
+                                final var expectedValue = entry.getValue();
+                                final var actualValue = name.getAttribute(key).map(Attribute::getValue).orElse(null);
+                                if (actualValue != null || expectedValue != null) {
+                                    // We have a value OR should have a value
+                                    if (actualValue == null) {
+                                        // We don't have a value but we should. Add it.
+                                        namesRepository.setNumericAttribute(name, user, key, expectedValue);
+                                    } else if (expectedValue == null) {
+                                        // We have a value but shouldn't. Unset it.
+                                        namesRepository.setNumericAttribute(name, user, key, expectedValue);
+                                    } else if (!actualValue.equals(expectedValue)) {
+                                        // We have a value but should have a different. Change it.
+                                        namesRepository.setNumericAttribute(name, user, key, expectedValue);
+                                    }
+                                }
+                            }
                         } catch (NameException e) {
                             LOGGER.warn("Could not add " + firstName.name + " because of this: " + e.getMessage());
                         }

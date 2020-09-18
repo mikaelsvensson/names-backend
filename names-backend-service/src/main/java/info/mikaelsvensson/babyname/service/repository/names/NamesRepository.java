@@ -12,11 +12,11 @@ import java.util.Set;
 
 @Repository
 public interface NamesRepository {
-    List<Name> all(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds) throws NameException;
+    List<Name> all(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, Set<AttributeFilterNumeric> numericFilters) throws NameException;
 
     Name add(String name, String ownerUserId, Set<Attribute<?>> attributes) throws NameException;
 
     Name get(String nameId) throws NameException;
 
-    void setNumericAttributes(Name name, User attributeOwner, Map<AttributeKey, Double> values) throws NameException;
+    void setNumericAttribute(Name name, User attributeOwner, AttributeKey key, Double value) throws NameException;
 }

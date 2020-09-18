@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
+import java.text.MessageFormat;
 import java.time.Instant;
 import java.util.*;
 
@@ -19,8 +20,8 @@ public class DbNamesRepository implements NamesRepository {
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
-    public List<Name> all(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds) throws NameException {
-        return find(userIds, namePrefix, limit, voteUserIds, null);
+    public List<Name> all(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, Set<AttributeFilterNumeric> numericFilters) throws NameException {
+        return find(userIds, namePrefix, limit, voteUserIds, null, numericFilters);
     }
 
     @Override
@@ -50,7 +51,7 @@ public class DbNamesRepository implements NamesRepository {
         }
     }
 
-    private List<Name> find(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, String nameId) throws NameException {
+    private List<Name> find(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, String nameId, Set<AttributeFilterNumeric> numericFilters) throws NameException {
         try {
             final var params = new HashMap<String, Object>();
             final var sqlWhere = new StringBuilder("TRUE");
@@ -70,6 +71,19 @@ public class DbNamesRepository implements NamesRepository {
                 sqlWhere.append(" AND no.user_id IN (:createdBy)");
                 sqlWhere.append(" AND naf.created_by IN (:createdBy)");
             }
+            if (numericFilters != null && !numericFilters.isEmpty()) {
+                var i = 0;
+                for (AttributeFilterNumeric numericFilter : numericFilters) {
+                    i++;
+                    var operator = switch (numericFilter.getOperator()) {
+                        case LESS_THAN -> '<';
+                        case GREATER_THAN -> '>';
+                    };
+                    sqlWhere.append(MessageFormat.format(" AND n.id IN (SELECT naf{0}.name_id FROM name_attributes_float AS naf{0} WHERE naf{0}.key = :numFilterKey{0} AND naf{0}.value {1} :numFilterValue{0})", i, operator));
+                    params.put("numFilterKey" + i, numericFilter.getKey().name());
+                    params.put("numFilterValue" + i, numericFilter.getValue());
+                }
+            }
 
             params.put("createdBy", userIds);
 
@@ -88,7 +102,7 @@ public class DbNamesRepository implements NamesRepository {
                             "ORDER BY " +
                             "   n.name " +
                             "   ,naf.key ",
-                            params,
+                    params,
                     rs -> {
                         Name currentName = null;
                         while (rs.next()) {
@@ -121,19 +135,22 @@ public class DbNamesRepository implements NamesRepository {
 
     @Override
     public Name get(String nameId) throws NameException {
-        return find(null, null, 1, null, nameId).stream().findFirst().orElseThrow(() -> new NameException("Could not find name"));
+        return find(null, null, 1, null, nameId, null).stream().findFirst().orElseThrow(() -> new NameException("Could not find name"));
     }
 
     @Override
-    public void setNumericAttributes(Name name, User attributeOwner, Map<AttributeKey, Double> values) throws NameException {
-        for (var entry : values.entrySet()) {
+    public void setNumericAttribute(Name name, User attributeOwner, AttributeKey key, Double value) throws NameException {
+        Objects.requireNonNull(name);
+        Objects.requireNonNull(attributeOwner);
+        Objects.requireNonNull(key);
+        if (value != null) {
             try {
                 var rowsInserted = namedParameterJdbcTemplate.update(
                         "INSERT INTO name_attributes_float (name_id, key, value, created_by, created_at) VALUES (:nameId, :key, :value, :createdBy, :createdAt)",
                         Map.of(
                                 "nameId", name.getId(),
-                                "key", entry.getKey().name(),
-                                "value", entry.getValue(),
+                                "key", key.name(),
+                                "value", value,
                                 "createdBy", attributeOwner.getId(),
                                 "createdAt", Instant.now().toEpochMilli()
                         ));
@@ -145,13 +162,28 @@ public class DbNamesRepository implements NamesRepository {
                         "UPDATE name_attributes_float SET value = :value WHERE name_id = :nameId AND key = :key AND created_by = :createdBy",
                         Map.of(
                                 "nameId", name.getId(),
-                                "key", entry.getKey().name(),
-                                "value", entry.getValue(),
+                                "key", key.name(),
+                                "value", value,
                                 "createdBy", attributeOwner.getId()
                         ));
                 if (rowsUpdated == 0) {
                     throw new NameException(rowsUpdated + " row(s) updated.");
                 }
+            }
+        } else {
+            try {
+                var rowsInserted = namedParameterJdbcTemplate.update(
+                        "DELETE FROM name_attributes_float WHERE name_id = :nameId AND key = :key AND created_by = :createdBy",
+                        Map.of(
+                                "nameId", name.getId(),
+                                "key", key.name(),
+                                "createdBy", attributeOwner.getId()
+                        ));
+                if (rowsInserted != 1) {
+                    throw new NameException(rowsInserted + " row(s) deleted.");
+                }
+            } catch (DataAccessException e) {
+                throw new NameException(e.getMessage());
             }
         }
     }

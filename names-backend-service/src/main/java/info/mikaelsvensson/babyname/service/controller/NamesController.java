@@ -39,7 +39,7 @@ public class NamesController {
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
         try {
-            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, null));
+            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, null, null));
         } catch (NameException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

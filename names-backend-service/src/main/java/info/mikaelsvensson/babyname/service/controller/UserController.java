@@ -4,8 +4,10 @@ import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionException;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionStatus;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionsRepository;
+import info.mikaelsvensson.babyname.service.repository.names.AttributeFilterNumeric;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
+import info.mikaelsvensson.babyname.service.repository.names.NumericOperator;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
@@ -93,6 +95,7 @@ public class UserController {
             @PathVariable("userId") String userId,
             @RequestParam(name = "name-prefix", required = false) String namePrefix,
             @RequestParam(name = "voted-by", required = false) String votedBy,
+            @RequestParam(name = "attribute-filter", required = false) Set<String> attributeFilterSpecs,
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
         try {
@@ -101,11 +104,19 @@ public class UserController {
             userIds.add(user.getId());
             userIds.add(scbNameImporter.getUser().getId());
             userIds.addAll(relationshipsRepository.getRelatedUsers(user).stream().map(User::getId).collect(Collectors.toList()));
+
+            final var numericFilters = Optional.ofNullable(attributeFilterSpecs).orElse(Collections.emptySet()).stream().map(attributeFilterSpec -> attributeFilterSpec.split(":")).filter(specFields -> specFields.length == 3).map(specFields -> new AttributeFilterNumeric(
+                    AttributeKey.valueOf(specFields[0]),
+                    NumericOperator.valueOf(specFields[1]),
+                    Double.parseDouble(specFields[2])
+            )).collect(Collectors.toSet());
+
             return new NamesController.SearchResult(namesRepository.all(
                     userIds,
                     namePrefix,
                     limit,
-                    Set.of(Optional.ofNullable(votedBy).map(s -> s.split(",")).orElse(new String[]{}))));
+                    Set.of(Optional.ofNullable(votedBy).map(s -> s.split(",")).orElse(new String[]{})),
+                    numericFilters));
         } catch (NameException | RelationshipException | UserException e) {
             LOGGER.warn("Could search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
