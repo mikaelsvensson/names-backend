@@ -21,10 +21,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -94,7 +91,7 @@ public class ScbNameImporter {
                         final var countTotal = femaleCount + maleCount;
 
                         try {
-                            var name = existingNames.get(firstName.name).stream().findFirst().orElse(null);
+                            var name = Optional.ofNullable(existingNames.get(firstName.name)).orElse(Collections.emptyList()).stream().findFirst().orElse(null);
                             if (name == null) {
                                 name = namesRepository.add(firstName.name, user.getId(), Collections.emptySet());
                             }
