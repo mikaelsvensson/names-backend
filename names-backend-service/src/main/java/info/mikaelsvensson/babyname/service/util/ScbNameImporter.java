@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
@@ -59,6 +60,7 @@ public class ScbNameImporter {
 
     // About event listener: https://www.baeldung.com/running-setup-logic-on-startup-in-spring
     @EventListener
+    @Order(20)
     public void onApplicationEvent(ContextRefreshedEvent event) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
             final var user = getUser();
@@ -93,7 +95,7 @@ public class ScbNameImporter {
                         try {
                             var name = Optional.ofNullable(existingNames.get(firstName.name)).orElse(Collections.emptyList()).stream().findFirst().orElse(null);
                             if (name == null) {
-                                name = namesRepository.add(firstName.name, user.getId(), Collections.emptySet());
+                                name = namesRepository.add(firstName.name, user, Collections.emptySet());
                             }
 
                             final var expectedAttrs = new HashMap<AttributeKey, Double>();

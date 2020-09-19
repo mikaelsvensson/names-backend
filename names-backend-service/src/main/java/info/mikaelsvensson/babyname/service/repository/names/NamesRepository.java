@@ -14,7 +14,7 @@ import java.util.Set;
 public interface NamesRepository {
     List<Name> all(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, Set<AttributeFilterNumeric> numericFilters) throws NameException;
 
-    Name add(String name, String ownerUserId, Set<Attribute<?>> attributes) throws NameException;
+    Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException;
 
     Name get(String nameId) throws NameException;
 

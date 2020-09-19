@@ -2,6 +2,7 @@ package info.mikaelsvensson.babyname.service.repository.names;
 
 import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
+import info.mikaelsvensson.babyname.service.util.NameFeature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -25,7 +26,7 @@ public class DbNamesRepository implements NamesRepository {
     }
 
     @Override
-    public Name add(String name, String ownerUserId, Set<Attribute<?>> attributes) throws NameException {
+    public Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException {
         try {
             final var obj = new Name(
                     name,
@@ -42,9 +43,11 @@ public class DbNamesRepository implements NamesRepository {
                     "INSERT INTO name_owners (name_id, user_id, created_at) VALUES (:id, :createdBy, :createdAt)",
                     Map.of(
                             "id", obj.getId(),
-                            "createdBy", ownerUserId,
+                            "createdBy", user.getId(),
                             "createdAt", Instant.now().toEpochMilli()
                     ));
+
+            setNumericAttribute(obj, user, AttributeKey.SYLLABLE_COUNT, (double) NameFeature.syllableCount(name));
             return obj;
         } catch (DataAccessException e) {
             throw new NameException(e.getMessage());

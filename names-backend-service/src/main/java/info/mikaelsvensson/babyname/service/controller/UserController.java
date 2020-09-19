@@ -15,6 +15,7 @@ import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
 import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
+import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,9 @@ public class UserController {
 
     @Autowired
     private ScbNameImporter scbNameImporter;
+
+    @Autowired
+    private SyllableUpdater syllableUpdater;
 
     @PostMapping
     public User create() {
@@ -103,6 +107,7 @@ public class UserController {
             var userIds = new HashSet<String>();
             userIds.add(user.getId());
             userIds.add(scbNameImporter.getUser().getId());
+            userIds.add(syllableUpdater.getUser().getId());
             userIds.addAll(relationshipsRepository.getRelatedUsers(user).stream().map(User::getId).collect(Collectors.toList()));
 
             final var numericFilters = Optional.ofNullable(attributeFilterSpecs).orElse(Collections.emptySet()).stream().map(attributeFilterSpec -> attributeFilterSpec.split(":")).filter(specFields -> specFields.length == 3).map(specFields -> new AttributeFilterNumeric(
@@ -127,8 +132,8 @@ public class UserController {
     @ResponseStatus(HttpStatus.CREATED)
     public Name createName(@PathVariable("userId") String userId, @RequestBody Name nameBase) {
         try {
-            final var name = namesRepository.add(nameBase.getName(), userId, Collections.emptySet());
             final var user = userRepository.get(userId);
+            final var name = namesRepository.add(nameBase.getName(), user, Collections.emptySet());
             votesRepository.set(user, name, Vote.VALUE_UP);
             return name;
         } catch (UserException | NameException | VoteException e) {
