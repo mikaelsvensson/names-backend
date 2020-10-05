@@ -73,6 +73,7 @@ public class DbNamesRepository implements NamesRepository {
             if (userIds != null && !userIds.isEmpty()) {
                 sqlWhere.append(" AND no.user_id IN (:createdBy)");
                 sqlWhere.append(" AND naf.created_by IN (:createdBy)");
+                params.put("createdBy", userIds);
             }
             if (numericFilters != null && !numericFilters.isEmpty()) {
                 var i = 0;
@@ -87,8 +88,6 @@ public class DbNamesRepository implements NamesRepository {
                     params.put("numFilterValue" + i, numericFilter.getValue());
                 }
             }
-
-            params.put("createdBy", userIds);
 
             var result = new ArrayList<Name>();
             namedParameterJdbcTemplate.query("" +
@@ -107,13 +106,13 @@ public class DbNamesRepository implements NamesRepository {
                             "   ,naf.key ",
                     params,
                     rs -> {
-                        Name currentName = null;
-                        while (rs.next()) {
-                            var rsId = rs.getString("id");
-                            final String rsName = rs.getString("name");
+                        Name currentName = result.size() > 0 ? result.get(result.size()-1) : null;
+                            final var rsId = rs.getString("id");
+                            final var rsName = rs.getString("name");
+                            final var rsNafKey = rs.getString("naf_key");
                             if (currentName == null || !rsName.equals(currentName.getName())) {
                                 if (result.size() > limit) {
-                                    break;
+                                    return;
                                 }
                                 currentName = new Name(
                                         rsName,
@@ -122,13 +121,12 @@ public class DbNamesRepository implements NamesRepository {
                                 );
                                 result.add(currentName);
                             }
-                            if (rs.getString("naf_key") != null) {
+                            if (rsNafKey != null) {
                                 currentName.addAttribute(new AttributeNumeric(
-                                        AttributeKey.valueOf(rs.getString("naf_key")),
+                                        AttributeKey.valueOf(rsNafKey),
                                         rs.getDouble("naf_value")
                                 ));
                             }
-                        }
                     });
             return result;
         } catch (DataAccessException e) {

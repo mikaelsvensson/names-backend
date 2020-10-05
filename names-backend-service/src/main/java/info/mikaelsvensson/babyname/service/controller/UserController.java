@@ -4,10 +4,7 @@ import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionException;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionStatus;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionsRepository;
-import info.mikaelsvensson.babyname.service.repository.names.AttributeFilterNumeric;
-import info.mikaelsvensson.babyname.service.repository.names.NameException;
-import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
-import info.mikaelsvensson.babyname.service.repository.names.NumericOperator;
+import info.mikaelsvensson.babyname.service.repository.names.*;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
@@ -40,6 +37,9 @@ public class UserController {
 
     @Autowired
     private NamesRepository namesRepository;
+
+    @Autowired
+    private SimilarityCalculator similarityCalculator;
 
     @Autowired
     private RelationshipsRepository relationshipsRepository;
@@ -79,6 +79,30 @@ public class UserController {
             return relationshipsRepository.getRelatedUsers(userRepository.get(userId));
         } catch (UserException | RelationshipException e) {
             LOGGER.warn("Could not read relationships", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    @GetMapping("/{userId}/names/{nameId}/similar")
+    public List<Map<String, Object>> getSimilar(@PathVariable("userId") String userId, @PathVariable("nameId") String nameId) {
+        try {
+            final var refName = namesRepository.get(nameId);
+            final var otherNames = namesRepository.all(null, null, Integer.MAX_VALUE, null, null)
+                    .stream()
+                    .filter(name -> !name.getId().equals(refName.getId()))
+                    .collect(Collectors.toList());
+
+            return similarityCalculator.get(refName, otherNames)
+                    .entrySet()
+                    .stream()
+                    .map(nameMapEntry -> Map.of(
+                            "id", nameMapEntry.getKey().getId(),
+                            "name", nameMapEntry.getKey().getName(),
+                            "values", nameMapEntry.getValue()
+                    ))
+                    .collect(Collectors.toList());
+        } catch (NameException e) {
+            LOGGER.warn("Could get similar names", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
