@@ -87,7 +87,7 @@ public class UserController {
     public List<Map<String, Object>> getSimilar(@PathVariable("userId") String userId, @PathVariable("nameId") String nameId) {
         try {
             final var refName = namesRepository.get(nameId);
-            final var otherNames = namesRepository.all(null, null, Integer.MAX_VALUE, null, null)
+            final var otherNames = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null)
                     .stream()
                     .filter(name -> !name.getId().equals(refName.getId()))
                     .collect(Collectors.toList());
@@ -124,6 +124,7 @@ public class UserController {
             @RequestParam(name = "name-prefix", required = false) String namePrefix,
             @RequestParam(name = "voted-by", required = false) String votedBy,
             @RequestParam(name = "attribute-filter", required = false) Set<String> attributeFilterSpecs,
+            @RequestParam(name = "result-offset", required = false, defaultValue = "0") int offset,
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
         try {
@@ -140,12 +141,15 @@ public class UserController {
                     Double.parseDouble(specFields[2])
             )).collect(Collectors.toSet());
 
-            return new NamesController.SearchResult(namesRepository.all(
+            final var names = namesRepository.all(
                     userIds,
                     namePrefix,
-                    limit,
+                    offset,
+                    limit + 1,
                     Set.of(Optional.ofNullable(votedBy).map(s -> s.split(",")).orElse(new String[]{})),
-                    numericFilters));
+                    numericFilters);
+            final var isLast = names.size() < limit + 1;
+            return new NamesController.SearchResult(isLast ? names : names.subList(0, limit), isLast);
         } catch (NameException | RelationshipException | UserException e) {
             LOGGER.warn("Could search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

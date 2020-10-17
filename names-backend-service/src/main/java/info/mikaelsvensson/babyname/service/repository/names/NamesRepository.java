@@ -7,12 +7,11 @@ import info.mikaelsvensson.babyname.service.model.User;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Repository
 public interface NamesRepository {
-    List<Name> all(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, Set<AttributeFilterNumeric> numericFilters) throws NameException;
+    List<Name> all(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, Set<AttributeFilterNumeric> numericFilters) throws NameException;
 
     Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException;
 

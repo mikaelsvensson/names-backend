@@ -3,6 +3,7 @@ package info.mikaelsvensson.babyname.service.repository.names;
 import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import info.mikaelsvensson.babyname.service.util.NameFeature;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -21,8 +22,8 @@ public class DbNamesRepository implements NamesRepository {
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
-    public List<Name> all(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, Set<AttributeFilterNumeric> numericFilters) throws NameException {
-        return find(userIds, namePrefix, limit, voteUserIds, null, numericFilters);
+    public List<Name> all(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, Set<AttributeFilterNumeric> numericFilters) throws NameException {
+        return find(userIds, namePrefix, offset, limit, voteUserIds, null, numericFilters);
     }
 
     @Override
@@ -54,7 +55,7 @@ public class DbNamesRepository implements NamesRepository {
         }
     }
 
-    private List<Name> find(Set<String> userIds, String namePrefix, int limit, Set<String> voteUserIds, String nameId, Set<AttributeFilterNumeric> numericFilters) throws NameException {
+    private List<Name> find(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, String nameId, Set<AttributeFilterNumeric> numericFilters) throws NameException {
         try {
             final var params = new HashMap<String, Object>();
             final var sqlWhere = new StringBuilder("TRUE");
@@ -90,6 +91,8 @@ public class DbNamesRepository implements NamesRepository {
             }
 
             var result = new ArrayList<Name>();
+            final var nameIndex = new MutableInt(-1);
+            final var prevIdHash = new MutableInt(0);
             namedParameterJdbcTemplate.query("" +
                             "SELECT " +
                             "   n.* " +
@@ -106,27 +109,32 @@ public class DbNamesRepository implements NamesRepository {
                             "   ,naf.key ",
                     params,
                     rs -> {
-                        Name currentName = result.size() > 0 ? result.get(result.size()-1) : null;
-                            final var rsId = rs.getString("id");
-                            final var rsName = rs.getString("name");
-                            final var rsNafKey = rs.getString("naf_key");
-                            if (currentName == null || !rsName.equals(currentName.getName())) {
-                                if (result.size() > limit) {
-                                    return;
-                                }
-                                currentName = new Name(
-                                        rsName,
-                                        rsId,
-                                        new HashSet<>()
-                                );
-                                result.add(currentName);
-                            }
-                            if (rsNafKey != null) {
-                                currentName.addAttribute(new AttributeNumeric(
-                                        AttributeKey.valueOf(rsNafKey),
-                                        rs.getDouble("naf_value")
-                                ));
-                            }
+                        Name currentName = result.size() > 0 ? result.get(result.size() - 1) : null;
+                        final var rsId = rs.getString("id");
+                        final var rsName = rs.getString("name");
+                        final var rsNafKey = rs.getString("naf_key");
+                        final var isNewName = prevIdHash.intValue() != rsId.hashCode();
+                        prevIdHash.setValue(rsId.hashCode());
+                        if (isNewName) {
+                            nameIndex.add(1);
+                        }
+                        if (nameIndex.intValue() < offset || nameIndex.intValue() > offset + limit) {
+                            return;
+                        }
+                        if (isNewName) {
+                            currentName = new Name(
+                                    rsName,
+                                    rsId,
+                                    new HashSet<>()
+                            );
+                            result.add(currentName);
+                        }
+                        if (rsNafKey != null) {
+                            currentName.addAttribute(new AttributeNumeric(
+                                    AttributeKey.valueOf(rsNafKey),
+                                    rs.getDouble("naf_value")
+                            ));
+                        }
                     });
             return result;
         } catch (DataAccessException e) {
@@ -136,7 +144,7 @@ public class DbNamesRepository implements NamesRepository {
 
     @Override
     public Name get(String nameId) throws NameException {
-        return find(null, null, 1, null, nameId, null).stream().findFirst().orElseThrow(() -> new NameException("Could not find name"));
+        return find(null, null, 0, 1, null, nameId, null).stream().findFirst().orElseThrow(() -> new NameException("Could not find name"));
     }
 
     @Override

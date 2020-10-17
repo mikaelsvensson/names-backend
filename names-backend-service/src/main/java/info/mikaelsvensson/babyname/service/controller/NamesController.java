@@ -19,7 +19,7 @@ import java.util.Set;
 @RequestMapping("names")
 public class NamesController {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(NamesController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(NamesController.class);
 
     @Autowired
     private NamesRepository namesRepository;
@@ -33,10 +33,13 @@ public class NamesController {
     @GetMapping
     public SearchResult get(
             @RequestParam(name = "name-prefix", required = false) String namePrefix,
+            @RequestParam(name = "result-offset", required = false, defaultValue = "0") int offset,
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
         try {
-            return new SearchResult(namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, limit, null, null));
+            final var names = namesRepository.all(Set.of(scbNameImporter.getUser().getId()), namePrefix, offset, limit + 1, null, null);
+            final var isLast = names.size() < limit + 1;
+            return new SearchResult(isLast ? names : names.subList(0, limit), isLast);
         } catch (NameException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -56,10 +59,12 @@ public class NamesController {
     }
 
     public static class SearchResult {
-        public List<Name> names;
+        public final List<Name> names;
+        public final boolean isLast;
 
-        public SearchResult(List<Name> names) {
+        public SearchResult(List<Name> names, boolean isLast) {
             this.names = names;
+            this.isLast = isLast;
         }
     }
 }

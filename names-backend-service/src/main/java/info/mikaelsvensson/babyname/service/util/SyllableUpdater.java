@@ -35,7 +35,7 @@ public class SyllableUpdater {
     @Order(1000)
     public void onApplicationEvent(ContextRefreshedEvent event) {
         try {
-            for (Name name : namesRepository.all(null, null, Integer.MAX_VALUE, null, null)) {
+            for (Name name : namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null)) {
 
                 final var expectedSyllableCount = Double.valueOf(NameFeature.syllableCount(name.getName()));
                 final var attribute = name.getAttribute(AttributeKey.SYLLABLE_COUNT);
