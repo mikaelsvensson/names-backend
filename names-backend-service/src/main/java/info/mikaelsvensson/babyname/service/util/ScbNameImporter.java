@@ -1,9 +1,6 @@
 package info.mikaelsvensson.babyname.service.util;
 
-import info.mikaelsvensson.babyname.service.model.Attribute;
-import info.mikaelsvensson.babyname.service.model.AttributeKey;
-import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.model.User;
+import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
@@ -135,10 +132,10 @@ public class ScbNameImporter {
     public User getUser() {
         if (user == null) {
             try {
-                user = userRepository.getBySystemName(SYSTEM_NAME);
+                user = userRepository.getByProvider(UserProvider.INTERNAL, SYSTEM_NAME);
             } catch (UserException e) {
                 try {
-                    user = userRepository.addSystemUser(SYSTEM_NAME);
+                    user = userRepository.addFromProvider(UserProvider.INTERNAL, SYSTEM_NAME);
                 } catch (UserException userException) {
                     throw new RuntimeException(userException);
                 }

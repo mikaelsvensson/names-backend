@@ -4,12 +4,18 @@ import java.time.Instant;
 
 public class User {
     private final String id;
-    private final String systemName;
+    private final UserProvider providerKey;
+    private final String providerUserId;
     private final Instant createdAt;
 
-    public User(String id, String systemName, Instant createdAt) {
+    public User(String id, Instant createdAt) {
+        this(id, UserProvider.ANONYMOUS, null, createdAt);
+    }
+
+    public User(String id, UserProvider providerKey, String providerUserId, Instant createdAt) {
         this.id = id;
-        this.systemName = systemName;
+        this.providerKey = providerKey;
+        this.providerUserId = providerUserId;
         this.createdAt = createdAt;
     }
 
@@ -21,7 +27,11 @@ public class User {
         return createdAt;
     }
 
-    public String getSystemName() {
-        return systemName;
+    public String getProviderUserId() {
+        return providerUserId;
+    }
+
+    public UserProvider getProviderKey() {
+        return providerKey;
     }
 }
