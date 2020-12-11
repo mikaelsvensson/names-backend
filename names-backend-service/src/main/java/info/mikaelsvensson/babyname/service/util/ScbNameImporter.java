@@ -62,7 +62,7 @@ public class ScbNameImporter {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
             final var user = getUser();
 
-            final var existingNames = namesRepository.all(Set.of(user.getId()), null, 0, Integer.MAX_VALUE, null, null).stream()
+            final var existingNames = namesRepository.all(Set.of(user.getId()), null, 0, Integer.MAX_VALUE, null, null, null).stream()
                     .collect(Collectors.groupingBy(Name::getName));
 
             LOGGER.info("Database contains {} names from SCB.", existingNames.size());

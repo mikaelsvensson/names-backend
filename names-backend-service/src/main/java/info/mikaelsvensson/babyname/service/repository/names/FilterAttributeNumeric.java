@@ -2,12 +2,12 @@ package info.mikaelsvensson.babyname.service.repository.names;
 
 import info.mikaelsvensson.babyname.service.model.AttributeKey;
 
-public class AttributeFilterNumeric {
+public class FilterAttributeNumeric {
     private AttributeKey key;
     private NumericOperator operator;
     private Double value;
 
-    public AttributeFilterNumeric(AttributeKey key, NumericOperator operator, Double value) {
+    public FilterAttributeNumeric(AttributeKey key, NumericOperator operator, Double value) {
         this.key = key;
         this.operator = operator;
         this.value = value;

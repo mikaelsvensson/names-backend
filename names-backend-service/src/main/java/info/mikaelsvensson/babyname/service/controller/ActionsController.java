@@ -21,10 +21,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.awt.image.BufferedImage;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
@@ -46,6 +48,18 @@ public class ActionsController {
     @Value("${actions.qrUrlTemplate}")
     private String qrUrlTemplate;
 
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Action createAction(Authentication authentication, @RequestBody Action action) {
+        try {
+            var userId = authentication.getName();
+            return actionsRepository.add(userRepository.get(userId), action.getType(), action.getParameters(), ActionStatus.PENDING);
+        } catch (UserException | ActionException e) {
+            LOGGER.warn("Could not create relationship", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
     @GetMapping(value = "{actionId}/qr", produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<BufferedImage> getQrCode(@PathVariable("actionId") String actionId) {
         try {
@@ -61,35 +75,39 @@ public class ActionsController {
     }
 
     @PostMapping("{actionId}/invocation")
-    public Action perform(@PathVariable("actionId") String actionId, @RequestBody Map<String, String> parameters) {
+    public Action perform(Authentication authentication, @PathVariable("actionId") String actionId, @RequestBody(required = false) Map<String, String> body) {
+        final var parameters = Optional.ofNullable(body).orElse(Collections.emptyMap());
         try {
-            final Action action = actionsRepository.get(actionId);
+            final var action = actionsRepository.get(actionId);
             if (action.getStatus() != ActionStatus.PENDING) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Action cannot be performed.");
             }
             try {
-                switch (action.getType()) {
-                    case ADD_RELATIONSHIP:
-                        final var relatedUserId = Optional.ofNullable(parameters.get("invokingUser")).orElseThrow(() -> new ActionException("No invoking user specified."));
+                return switch (action.getType()) {
+                    case ADD_RELATIONSHIP -> {
+                        final var userId = getUserId(authentication);
                         final var sourceUserId = action.getCreatedBy();
-                        if (sourceUserId.equals(relatedUserId)) {
+                        if (sourceUserId.equals(userId)) {
                             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot link to yourself.");
                         }
                         relationshipsRepository.add(
                                 userRepository.get(sourceUserId),
-                                userRepository.get(relatedUserId));
+                                userRepository.get(userId));
                         relationshipsRepository.add(
-                                userRepository.get(relatedUserId),
+                                userRepository.get(userId),
                                 userRepository.get(sourceUserId));
                         actionsRepository.setStatus(action, ActionStatus.DONE);
-                        return actionsRepository.get(actionId);
-                    default:
-                        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unsupported type of action.");
-                }
+                        yield actionsRepository.get(actionId);
+                    }
+                };
             } catch (RelationshipException | UserException | ActionException | ResponseStatusException e) {
                 LOGGER.warn("Could not perform action.", e);
                 actionsRepository.setStatus(action, ActionStatus.FAILED);
-                return actionsRepository.get(actionId);
+                if (e instanceof ResponseStatusException) {
+                    throw (ResponseStatusException) e;
+                } else {
+                    return actionsRepository.get(actionId);
+                }
             }
         } catch (ActionNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
@@ -97,5 +115,9 @@ public class ActionsController {
             LOGGER.warn("Could not perform action.", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
+    }
+
+    private String getUserId(Authentication authentication) {
+        return Optional.ofNullable(authentication).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You need to be logged in.")).getName();
     }
 }
