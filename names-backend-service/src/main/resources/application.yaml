@@ -3,3 +3,9 @@ server:
 
 actions:
   qrUrlTemplate: "http://localhost:8081/#/{actionId}"
+
+jwt:
+  secret: "fCVM93NlI;qO(UD+|.CO.1oweuY8:rDx-O,E8*RY}-.AJf_:u>(^&SP@hOuB*N@&kLDQIcpZ:fK%Kx}m^ER{!RwXx?'@$#P;5Th{"
+
+facebook:
+  secret: "0ecf227dd792a258e44e6154a4552505"
