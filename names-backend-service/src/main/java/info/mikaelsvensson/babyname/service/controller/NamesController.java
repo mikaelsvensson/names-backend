@@ -87,9 +87,6 @@ public class NamesController {
                     switch (votesFilter) {
                         case MY_VOTES -> voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.ANY_VOTE));
                         case ALL_OUR_VOTES -> {
-                            if (partnerUserIds.isEmpty()) {
-                                return new SearchResult(Collections.emptyList(), true); // No partner, no results.
-                            }
                             var userAndPartnerIds = new HashSet<String>();
                             userAndPartnerIds.add(userId);
                             userAndPartnerIds.addAll(partnerUserIds);

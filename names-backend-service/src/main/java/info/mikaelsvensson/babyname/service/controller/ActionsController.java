@@ -80,7 +80,7 @@ public class ActionsController {
         try {
             final var action = actionsRepository.get(actionId);
             if (action.getStatus() != ActionStatus.PENDING) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Action cannot be performed.");
+                throw new ResponseStatusException(HttpStatus.GONE, "Action cannot be performed.");
             }
             try {
                 return switch (action.getType()) {
@@ -100,14 +100,10 @@ public class ActionsController {
                         yield actionsRepository.get(actionId);
                     }
                 };
-            } catch (RelationshipException | UserException | ActionException | ResponseStatusException e) {
+            } catch (RelationshipException | UserException | ActionException e) {
                 LOGGER.warn("Could not perform action.", e);
                 actionsRepository.setStatus(action, ActionStatus.FAILED);
-                if (e instanceof ResponseStatusException) {
-                    throw (ResponseStatusException) e;
-                } else {
-                    return actionsRepository.get(actionId);
-                }
+                return actionsRepository.get(actionId);
             }
         } catch (ActionNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
