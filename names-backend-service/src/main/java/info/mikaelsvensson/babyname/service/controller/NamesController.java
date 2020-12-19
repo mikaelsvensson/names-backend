@@ -61,27 +61,19 @@ public class NamesController {
             @RequestParam(name = "result-offset", required = false, defaultValue = "0") int offset,
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
-        final var userId = authentication.getName();
         try {
-            var userIds = new HashSet<String>();
+            final var userIds = new HashSet<String>();
             userIds.add(scbNameImporter.getUser().getId());
             userIds.add(syllableUpdater.getUser().getId());
 
-            var userVotes = new ArrayList<Vote>();
-            var partnerVotes = new ArrayList<Vote>();
-
-            var voteFilters = new HashSet<FilterVote>();
-            if (userId != null) {
-                final var user = userRepository.get(userId);
+            final var voteFilters = new HashSet<FilterVote>();
+            final var userId = getUserId(authentication);
+            final var user = userId != null ? userRepository.get(userId) : null;
+            final var partnerUsers = user != null ? relationshipsRepository.getRelatedUsers(user) : Collections.<User>emptyList();
+            if (user != null) {
                 userIds.add(user.getId());
-                final var partnerUsers = relationshipsRepository.getRelatedUsers(user);
                 final var partnerUserIds = partnerUsers.stream().map(User::getId).collect(Collectors.toSet());
                 userIds.addAll(partnerUserIds);
-
-                userVotes.addAll(votesRepository.all(user));
-                for (User partnerUser : partnerUsers) {
-                    partnerVotes.addAll(votesRepository.all(partnerUser));
-                }
 
                 if (votesFilter != null) {
                     switch (votesFilter) {
@@ -131,29 +123,39 @@ public class NamesController {
             final var isLast = names.size() < limit + 1;
             final var returnedNames = isLast ? names : names.subList(0, limit);
             return new SearchResult(
-                    returnedNames
-                            .stream()
-                            .map(name -> new ExtendedName(
-                                    name.getName(),
-                                    name.getId(),
-                                    name.getAttributes(),
-                                    userVotes.stream()
-                                            .filter(vote -> vote.getNameId().equals(name.getId()))
-                                            .findFirst()
-                                            .map(Vote::getValue)
-                                            .orElse(null),
-                                    partnerVotes.stream()
-                                            .filter(vote -> vote.getNameId().equals(name.getId()))
-                                            .findFirst()
-                                            .map(Vote::getValue)
-                                            .orElse(null)
-                            ))
-                            .collect(Collectors.toList()),
+                    enrichWithVotes(returnedNames, user, partnerUsers),
                     isLast);
         } catch (NameException | UserException | RelationshipException | VoteException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
+    }
+
+    private List<ExtendedName> enrichWithVotes(Collection<Name> returnedNames, User user, Collection<User> partnerUsers) throws VoteException {
+        final var userVotes = user != null ? votesRepository.all(user) : Collections.<Vote>emptyList();
+        final var partnerVotes = new ArrayList<Vote>();
+        for (User partnerUser : partnerUsers) {
+            partnerVotes.addAll(votesRepository.all(partnerUser));
+        }
+
+        return returnedNames
+                .stream()
+                .map(name -> new ExtendedName(
+                        name.getName(),
+                        name.getId(),
+                        name.getAttributes(),
+                        userVotes.stream()
+                                .filter(vote -> vote.getNameId().equals(name.getId()))
+                                .findFirst()
+                                .map(Vote::getValue)
+                                .orElse(null),
+                        partnerVotes.stream()
+                                .filter(vote -> vote.getNameId().equals(name.getId()))
+                                .findFirst()
+                                .map(Vote::getValue)
+                                .orElse(null)
+                ))
+                .collect(Collectors.toList());
     }
 
     @PostMapping
@@ -176,20 +178,26 @@ public class NamesController {
     }
 
     @GetMapping("{nameId}")
-    public Name get(
+    public ExtendedName get(
+            Authentication authentication,
             @PathVariable(name = "nameId", required = false) String nameId
     ) {
         try {
-            return namesRepository.get(nameId);
-        } catch (NameException e) {
+            var userId = getUserId(authentication);
+            final var user = userId != null ? userRepository.get(userId) : null;
+            final var partnerUsers = user != null ? relationshipsRepository.getRelatedUsers(user) : Collections.<User>emptyList();
+            return enrichWithVotes(
+                    Collections.singleton(namesRepository.get(nameId)),
+                    user,
+                    partnerUsers).get(0);
+        } catch (NameException | UserException | VoteException | RelationshipException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
     @GetMapping("{nameId}/similar")
-    public List<Map<String, Object>> getSimilar(Authentication authentication, @PathVariable("nameId") String nameId) {
-        var userId = authentication.getName();
+    public List<ExtendedName> getSimilar(Authentication authentication, @PathVariable("nameId") String nameId) {
         try {
             final var refName = namesRepository.get(nameId);
             final var otherNames = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null)
@@ -197,16 +205,20 @@ public class NamesController {
                     .filter(name -> !name.getId().equals(refName.getId()))
                     .collect(Collectors.toList());
 
-            return similarityCalculator.get(refName, otherNames)
-                    .entrySet()
-                    .stream()
-                    .map(nameMapEntry -> Map.of(
-                            "id", nameMapEntry.getKey().getId(),
-                            "name", nameMapEntry.getKey().getName(),
-                            "values", nameMapEntry.getValue()
-                    ))
-                    .collect(Collectors.toList());
-        } catch (NameException e) {
+            final var userId = getUserId(authentication);
+            final var user = userId != null ? userRepository.get(userId) : null;
+            final var partnerUsers = user != null ? relationshipsRepository.getRelatedUsers(user) : Collections.<User>emptyList();
+            return enrichWithVotes(similarityCalculator.get(refName, otherNames)
+                            .entrySet()
+                            .stream()
+                            .sorted((o1, o2) ->
+                                    o2.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum() -
+                                            o1.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum())
+                            .map(Map.Entry::getKey)
+                            .collect(Collectors.toList()),
+                    user,
+                    partnerUsers);
+        } catch (NameException | UserException | RelationshipException | VoteException e) {
             LOGGER.warn("Could get similar names", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -239,5 +251,9 @@ public class NamesController {
             this.names = names;
             this.isLast = isLast;
         }
+    }
+
+    private String getUserId(Authentication authentication) {
+        return authentication != null ? authentication.getName() : null;
     }
 }

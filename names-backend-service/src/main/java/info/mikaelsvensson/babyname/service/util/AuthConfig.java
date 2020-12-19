@@ -36,6 +36,8 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.POST, "/token").permitAll()
                 .antMatchers(HttpMethod.GET, "/actions/**/qr").permitAll()
                 .antMatchers(HttpMethod.POST, "/actions/**/invocation").permitAll()
+                .antMatchers(HttpMethod.GET, "/names").permitAll()
+                .antMatchers(HttpMethod.GET, "/names/**").permitAll()
                 .anyRequest().authenticated().and()
                 .addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
