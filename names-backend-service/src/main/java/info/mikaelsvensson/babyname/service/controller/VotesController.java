@@ -1,5 +1,6 @@
 package info.mikaelsvensson.babyname.service.controller;
 
+import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.Vote;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
@@ -16,6 +17,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("votes")
@@ -46,7 +52,8 @@ public class VotesController {
     public void setVotes(Authentication authentication, @PathVariable("nameId") String nameId, @RequestBody Vote vote) {
         var userId = authentication.getName();
         try {
-            votesRepository.set(userRepository.get(userId), namesRepository.get(nameId), vote.getValue());
+            final var user = userRepository.get(userId);
+            votesRepository.set(user, namesRepository.get(nameId), vote.getValue());
         } catch (UserException | NameException | VoteException e) {
             LOGGER.warn("Could not cast vote", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

@@ -8,6 +8,8 @@ import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
+import info.mikaelsvensson.babyname.service.util.Recommender;
+import info.mikaelsvensson.babyname.service.util.RecommenderException;
 import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
 import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
 import org.slf4j.Logger;
@@ -46,11 +48,14 @@ public class NamesController {
     @Autowired
     private SyllableUpdater syllableUpdater;
 
-    public NamesController() throws IOException {
-    }
-
     @Autowired
     private ScbNameImporter scbNameImporter;
+
+    @Autowired
+    private Recommender recommender;
+
+    public NamesController() throws IOException {
+    }
 
     @GetMapping
     public SearchResult get(
@@ -220,6 +225,27 @@ public class NamesController {
                     partnerUsers);
         } catch (NameException | UserException | RelationshipException | VoteException e) {
             LOGGER.warn("Could get similar names", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    @GetMapping("recommendations")
+    public List<Name> getRecommendations(Authentication authentication,
+                                         @RequestParam(name = "attribute-filter", required = false) Set<String> attributeFilterSpecs
+    ) {
+        try {
+            final var numericFilters = Optional.ofNullable(attributeFilterSpecs).orElse(Collections.emptySet()).stream()
+                    .map(attributeFilterSpec -> attributeFilterSpec.split(":"))
+                    .filter(specFields -> specFields.length == 3)
+                    .map(specFields -> new FilterAttributeNumeric(
+                            AttributeKey.valueOf(specFields[0]),
+                            NumericOperator.valueOf(specFields[1]),
+                            Double.parseDouble(specFields[2])
+                    ))
+                    .collect(Collectors.toSet());
+            return recommender.getRecommendation(userRepository.get(getUserId(authentication)), numericFilters);
+        } catch (RecommenderException | UserException e) {
+            LOGGER.warn("Could get recommendations", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }

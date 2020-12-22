@@ -9,3 +9,6 @@ jwt:
 
 facebook:
   secret: "SECRET"
+
+recommender:
+  unigramConsidered: true
