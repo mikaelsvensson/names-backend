@@ -83,6 +83,7 @@ public class NamesController {
                 if (votesFilter != null) {
                     switch (votesFilter) {
                         case MY_VOTES -> voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.ANY_VOTE));
+                        case MY_FAVOURITES -> voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.POSITIVE_VOTE));
                         case ALL_OUR_VOTES -> {
                             var userAndPartnerIds = new HashSet<String>();
                             userAndPartnerIds.add(userId);
