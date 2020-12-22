@@ -232,7 +232,8 @@ public class NamesController {
 
     @GetMapping("recommendations")
     public List<Name> getRecommendations(Authentication authentication,
-                                         @RequestParam(name = "attribute-filter", required = false) Set<String> attributeFilterSpecs
+                                         @RequestParam(name = "attribute-filter", required = false) Set<String> attributeFilterSpecs,
+                                         @RequestParam(name = "result-count", required = false, defaultValue = "10") int limit
     ) {
         try {
             final var numericFilters = Optional.ofNullable(attributeFilterSpecs).orElse(Collections.emptySet()).stream()
@@ -244,7 +245,8 @@ public class NamesController {
                             Double.parseDouble(specFields[2])
                     ))
                     .collect(Collectors.toSet());
-            return recommender.getRecommendation(userRepository.get(getUserId(authentication)), numericFilters);
+            final var allRecommendations = recommender.getRecommendation(userRepository.get(getUserId(authentication)), numericFilters);
+            return allRecommendations.subList(0, Math.min(limit, allRecommendations.size()));
         } catch (RecommenderException | UserException e) {
             LOGGER.warn("Could get recommendations", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
