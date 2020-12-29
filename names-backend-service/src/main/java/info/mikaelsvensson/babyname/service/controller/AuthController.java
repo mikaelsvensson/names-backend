@@ -28,16 +28,16 @@ public class AuthController {
     @Autowired
     private FacebookAuthenticator facebookAuthenticator;
 
-    @PostConstruct
-    private void debug() {
-        try {
-            userRepository.all().stream().filter(user -> user.getProviderKey() == UserProvider.ANONYMOUS).forEach(user -> {
-                LOGGER.info(String.format("Token for %s: %s", user.getId(), authJwtService.encode(new JwtUser(user.getId()))));
-            });
-        } catch (UserException e) {
-            LOGGER.warn("Failed to print tokens", e);
-        }
-    }
+//    @PostConstruct
+//    private void debug() {
+//        try {
+//            userRepository.all().stream().filter(user -> user.getProviderKey() == UserProvider.ANONYMOUS).forEach(user -> {
+//                LOGGER.info(String.format("Token for %s: %s", user.getId(), authJwtService.encode(new JwtUser(user.getId()))));
+//            });
+//        } catch (UserException e) {
+//            LOGGER.warn("Failed to print tokens", e);
+//        }
+//    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

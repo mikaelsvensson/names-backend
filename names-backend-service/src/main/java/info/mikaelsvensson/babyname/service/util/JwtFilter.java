@@ -25,10 +25,10 @@ public class JwtFilter extends OncePerRequestFilter {
     @Autowired
     private AuthJwtService jwtService;
 
-    @PostConstruct
-    public void printDemoToken() {
-        LOGGER.info("Token for test user: " + jwtService.encode(new JwtUser("test-user")));
-    }
+//    @PostConstruct
+//    public void printDemoToken() {
+//        LOGGER.info("Token for test user: " + jwtService.encode(new JwtUser("test-user")));
+//    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
