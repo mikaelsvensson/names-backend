@@ -7,6 +7,7 @@ import info.mikaelsvensson.babyname.service.model.User;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Repository
@@ -16,6 +17,8 @@ public interface NamesRepository {
     Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException;
 
     Name get(String nameId) throws NameException;
+
+    Optional<Name> getByName(String name) throws NameException;
 
     void setNumericAttribute(Name name, User attributeOwner, AttributeKey key, Double value) throws NameException;
 }

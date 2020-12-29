@@ -22,8 +22,21 @@ public class DbNamesRepository implements NamesRepository {
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
-    public List<Name> all(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, Set<FilterAttributeNumeric> numericFilters, Set<FilterVote> filterVotes) throws NameException {
-        return find(userIds, namePrefix, offset, limit, voteUserIds, null, numericFilters, filterVotes);
+    public List<Name> all(Set<String> userIds,
+                          String namePrefix,
+                          int offset,
+                          int limit,
+                          Set<String> voteUserIds,
+                          Set<FilterAttributeNumeric> numericFilters,
+                          Set<FilterVote> filterVotes) throws NameException {
+        return find(new Condition()
+                        .userIds(userIds)
+                        .namePrefix(namePrefix)
+                        .voteUserIds(voteUserIds)
+                        .numericFilters(numericFilters)
+                        .filterVotes(filterVotes),
+                offset,
+                limit);
     }
 
     @Override
@@ -55,30 +68,34 @@ public class DbNamesRepository implements NamesRepository {
         }
     }
 
-    private List<Name> find(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, String nameId, Set<FilterAttributeNumeric> numericFilters, Set<FilterVote> filterVotes) throws NameException {
+    private List<Name> find(Condition condition, int offset, int limit) throws NameException {
         try {
             final var params = new HashMap<String, Object>();
             final var sqlWhere = new StringBuilder("TRUE");
-            if (nameId != null) {
+            if (condition.nameId != null) {
                 sqlWhere.append(" AND n.id = :nameId");
-                params.put("nameId", nameId);
+                params.put("nameId", condition.nameId);
             }
-            if (namePrefix != null) {
+            if (condition.nameExact != null) {
+                sqlWhere.append(" AND n.name = :nameExact");
+                params.put("nameExact", condition.nameExact);
+            }
+            if (condition.namePrefix != null) {
                 sqlWhere.append(" AND LOWER(n.name) LIKE :namePrefix");
-                params.put("namePrefix", namePrefix.toLowerCase() + "%");
+                params.put("namePrefix", condition.namePrefix.toLowerCase() + "%");
             }
-            if (voteUserIds != null && !voteUserIds.isEmpty()) {
+            if (condition.voteUserIds != null && !condition.voteUserIds.isEmpty()) {
                 sqlWhere.append(" AND n.id IN (SELECT v.name_id FROM votes AS v WHERE v.user_id IN (:voteUserIds))");
-                params.put("voteUserIds", voteUserIds);
+                params.put("voteUserIds", condition.voteUserIds);
             }
-            if (userIds != null && !userIds.isEmpty()) {
+            if (condition.userIds != null && !condition.userIds.isEmpty()) {
                 sqlWhere.append(" AND no.user_id IN (:createdBy)");
                 sqlWhere.append(" AND naf.created_by IN (:createdBy)");
-                params.put("createdBy", userIds);
+                params.put("createdBy", condition.userIds);
             }
-            if (numericFilters != null && !numericFilters.isEmpty()) {
+            if (condition.numericFilters != null && !condition.numericFilters.isEmpty()) {
                 var i = 0;
-                for (FilterAttributeNumeric numericFilter : numericFilters) {
+                for (FilterAttributeNumeric numericFilter : condition.numericFilters) {
                     i++;
                     var operator = switch (numericFilter.getOperator()) {
                         case LESS_THAN -> '<';
@@ -89,9 +106,9 @@ public class DbNamesRepository implements NamesRepository {
                     params.put("numFilterValue" + i, numericFilter.getValue());
                 }
             }
-            if (filterVotes != null && !filterVotes.isEmpty()) {
+            if (condition.filterVotes != null && !condition.filterVotes.isEmpty()) {
                 var i = 0;
-                for (FilterVote filterVote : filterVotes) {
+                for (FilterVote filterVote : condition.filterVotes) {
                     if (filterVote.getUserIds().isEmpty()) {
                         throw new NameException("List of user ids cannot be empty.");
                     }
@@ -160,7 +177,18 @@ public class DbNamesRepository implements NamesRepository {
 
     @Override
     public Name get(String nameId) throws NameException {
-        return find(null, null, 0, 1, null, nameId, null, null).stream().findFirst().orElseThrow(() -> new NameException("Could not find name"));
+        return find(new Condition().nameId(nameId), 0, 1)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new NameException("Could not find name"));
+    }
+
+    @Override
+    public Optional<Name> getByName(String name) throws NameException {
+        return find(new Condition().nameExact(name), 0, 1)
+                .stream()
+                .findFirst()
+                .or(Optional::empty);
     }
 
     @Override

@@ -5,6 +5,7 @@ import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,13 +60,9 @@ public class ScbNameImporter {
     @EventListener
     @Order(20)
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        LOGGER.info("SCB data sync started.");
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
             final var user = getUser();
-
-            final var existingNames = namesRepository.all(Set.of(user.getId()), null, 0, Integer.MAX_VALUE, null, null, null).stream()
-                    .collect(Collectors.groupingBy(Name::getName));
-
-            LOGGER.info("Database contains {} names from SCB.", existingNames.size());
 
             final var fileEntries = reader.lines()
                     .map(line -> Pattern.compile(",").split(line))
@@ -78,7 +75,11 @@ public class ScbNameImporter {
                     ))
                     .collect(Collectors.toSet());
 
+            LOGGER.info("{} entries in raw data.", fileEntries.size());
+
             final var totalPeopleCount = fileEntries.stream().mapToLong(fileEntry -> fileEntry.count).sum();
+
+            final var gcCounter = new MutableInt(0);
 
             fileEntries.stream()
                     .collect(Collectors.groupingBy(fileEntry -> fileEntry.name))
@@ -90,10 +91,8 @@ public class ScbNameImporter {
                         final var countTotal = femaleCount + maleCount;
 
                         try {
-                            var name = Optional.ofNullable(existingNames.get(firstName.name)).orElse(Collections.emptyList()).stream().findFirst().orElse(null);
-                            if (name == null) {
-                                name = namesRepository.add(firstName.name, user, Collections.emptySet());
-                            }
+                            var nameRes = namesRepository.getByName(firstName.name);
+                            var name = nameRes.isEmpty() ? namesRepository.add(firstName.name, user, Collections.emptySet()) : nameRes.get();
 
                             final var expectedAttrs = new HashMap<AttributeKey, Double>();
                             expectedAttrs.put(
@@ -123,10 +122,17 @@ public class ScbNameImporter {
                         } catch (NameException e) {
                             LOGGER.warn("Could not add " + firstName.name + " because of this: " + e.getMessage());
                         }
+
+                        gcCounter.increment();
+                        if (gcCounter.intValue() % 1000 == 0) {
+                            LOGGER.info("Processed {} names. Time for garbage collection.", gcCounter.intValue());
+                            System.gc();
+                        }
                     });
-        } catch (IOException | NameException e) {
+        } catch (IOException e) {
             LOGGER.error("Error when importing names from SCB file.", e);
         }
+        LOGGER.info("SCB data sync done.");
     }
 
     public User getUser() {
