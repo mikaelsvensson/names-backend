@@ -71,6 +71,13 @@
 			<version>1.2</version>
 		</dependency>
 
+		<!-- Generate email bodies -->
+		<dependency>
+			<groupId>com.github.spullara.mustache.java</groupId>
+			<artifactId>compiler</artifactId>
+			<version>0.9.6</version>
+		</dependency>
+
 		<!-- Sending emails -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
