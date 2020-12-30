@@ -38,7 +38,8 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.POST, "/actions/**/invocation").permitAll()
                 .antMatchers(HttpMethod.GET, "/names").permitAll()
                 .antMatchers(HttpMethod.GET, "/names/**").permitAll()
-                .anyRequest().authenticated().and()
+                .antMatchers("/admin/**").hasAuthority("ADMIN")
+                .anyRequest().hasAuthority("USER").and()
                 .addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
     }
