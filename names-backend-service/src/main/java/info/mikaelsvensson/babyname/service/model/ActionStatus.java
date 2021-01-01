@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.repository.actions;
+package info.mikaelsvensson.babyname.service.model;
 
 public enum ActionStatus {
     PENDING,

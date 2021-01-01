@@ -14,6 +14,7 @@ import info.mikaelsvensson.babyname.service.repository.relationships.Relationshi
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
+import info.mikaelsvensson.babyname.service.util.auth.EmailAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

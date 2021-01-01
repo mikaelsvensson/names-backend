@@ -1,9 +1,6 @@
 package info.mikaelsvensson.babyname.service.controller;
 
-import info.mikaelsvensson.babyname.service.model.Action;
 import info.mikaelsvensson.babyname.service.model.User;
-import info.mikaelsvensson.babyname.service.repository.actions.ActionException;
-import info.mikaelsvensson.babyname.service.repository.actions.ActionStatus;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionsRepository;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;

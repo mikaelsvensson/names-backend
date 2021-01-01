@@ -6,6 +6,8 @@ import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.util.AuthJwtService;
 import info.mikaelsvensson.babyname.service.util.JwtUser;
+import info.mikaelsvensson.babyname.service.util.auth.EmailAuthenticator;
+import info.mikaelsvensson.babyname.service.util.auth.FacebookAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

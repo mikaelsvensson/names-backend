@@ -1,7 +1,9 @@
-package info.mikaelsvensson.babyname.service.controller;
+package info.mikaelsvensson.babyname.service.util.auth;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import info.mikaelsvensson.babyname.service.controller.UserAuthenticator;
+import info.mikaelsvensson.babyname.service.controller.UserAuthenticatorException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 

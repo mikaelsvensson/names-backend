@@ -1,8 +1,5 @@
 package info.mikaelsvensson.babyname.service.model;
 
-import info.mikaelsvensson.babyname.service.repository.actions.ActionStatus;
-import info.mikaelsvensson.babyname.service.repository.actions.ActionType;
-
 import java.util.Map;
 
 public class Action {
