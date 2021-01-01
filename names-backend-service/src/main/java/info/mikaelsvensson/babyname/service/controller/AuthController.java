@@ -1,7 +1,6 @@
 package info.mikaelsvensson.babyname.service.controller;
 
-import info.mikaelsvensson.babyname.service.model.User;
-import info.mikaelsvensson.babyname.service.model.UserProvider;
+import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.util.AuthJwtService;
@@ -14,13 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
-
-import javax.annotation.PostConstruct;
+import org.springframework.web.client.HttpServerErrorException;
 
 @RestController
 @RequestMapping("token")
 public class AuthController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
+
     @Autowired
     private UserRepository userRepository;
 
@@ -29,6 +28,9 @@ public class AuthController {
 
     @Autowired
     private FacebookAuthenticator facebookAuthenticator;
+
+    @Autowired
+    private EmailAuthenticator emailAuthenticator;
 
 //    @PostConstruct
 //    private void debug() {
@@ -46,8 +48,9 @@ public class AuthController {
     public AuthTokenResponse auth(@RequestBody AuthRequest request) {
         try {
             var authenticator = switch (request.provider) {
-                case INTERNAL, ANONYMOUS, EMAIL -> throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, "Unsupported provider");
+                case INTERNAL, ANONYMOUS -> throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, "Unsupported provider");
                 case FACEBOOK -> facebookAuthenticator;
+                case EMAIL -> emailAuthenticator;
             };
 
             var providerUserId = authenticator.getId(request.data);
@@ -69,6 +72,17 @@ public class AuthController {
             } catch (UserException userException) {
                 throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
             }
+        }
+    }
+
+    @PostMapping("email-verification")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void sendEmailVerification(@RequestBody VerifyEmailRequest request) {
+        try {
+            emailAuthenticator.sendEmailVerification(request.emailAddress, request.redirectTo);
+        } catch (UserAuthenticatorException e) {
+            LOGGER.warn("Could not start email verification", e);
+            throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not start email verification");
         }
     }
 }

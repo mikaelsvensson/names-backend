@@ -23,4 +23,7 @@ public class JwtUtils {
     public DecodedJWT decode(String token) {
         return JWT.require(algorithm).build().verify(token);
     }
+    public DecodedJWT decode(String token, String audience) {
+        return JWT.require(algorithm).withAudience(audience).build().verify(token);
+    }
 }

@@ -6,10 +6,8 @@ import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import info.mikaelsvensson.babyname.service.model.Action;
-import info.mikaelsvensson.babyname.service.repository.actions.ActionException;
-import info.mikaelsvensson.babyname.service.repository.actions.ActionNotFoundException;
-import info.mikaelsvensson.babyname.service.repository.actions.ActionStatus;
-import info.mikaelsvensson.babyname.service.repository.actions.ActionsRepository;
+import info.mikaelsvensson.babyname.service.model.ActionStatus;
+import info.mikaelsvensson.babyname.service.repository.actions.*;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
@@ -46,6 +44,9 @@ public class ActionsController {
     @Autowired
     private RelationshipsRepository relationshipsRepository;
 
+    @Autowired
+    private EmailAuthenticator emailAuthenticator;
+
     @Value("${actions.qrUrlTemplate}")
     private String qrUrlTemplate;
 
@@ -76,7 +77,9 @@ public class ActionsController {
     }
 
     @PostMapping("{actionId}/invocation")
-    public Action perform(Authentication authentication, @PathVariable("actionId") String actionId, @RequestBody(required = false) Map<String, String> body) {
+    public Action perform(Authentication authentication,
+                          @PathVariable("actionId") String actionId,
+                          @RequestBody(required = false) Map<String, String> body) {
         final var parameters = Optional.ofNullable(body).orElse(Collections.emptyMap());
         try {
             final var action = actionsRepository.get(actionId);
@@ -85,21 +88,8 @@ public class ActionsController {
             }
             try {
                 return switch (action.getType()) {
-                    case ADD_RELATIONSHIP -> {
-                        final var userId = getUserId(authentication);
-                        final var sourceUserId = action.getCreatedBy();
-                        if (sourceUserId.equals(userId)) {
-                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot link to yourself.");
-                        }
-                        relationshipsRepository.add(
-                                userRepository.get(sourceUserId),
-                                userRepository.get(userId));
-                        relationshipsRepository.add(
-                                userRepository.get(userId),
-                                userRepository.get(sourceUserId));
-                        actionsRepository.setStatus(action, ActionStatus.DONE);
-                        yield actionsRepository.get(actionId);
-                    }
+                    case ADD_RELATIONSHIP -> handleAddRelationship(authentication, action);
+                    case VERIFY_EMAIL -> handleVerifyEmail(action);
                 };
             } catch (RelationshipException | UserException | ActionException e) {
                 LOGGER.warn("Could not perform action.", e);
@@ -112,6 +102,35 @@ public class ActionsController {
             LOGGER.warn("Could not perform action.", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
+    }
+
+    private Action handleVerifyEmail(Action action) throws ActionException {
+        final var emailAddress = action.getParameters().get("emailAddress");
+        if (emailAddress == null) {
+            throw new ActionException("No email address specified.");
+        }
+        final var redirectTo = action.getParameters().get("redirectTo");
+        actionsRepository.setStatus(action, ActionStatus.DONE);
+        return new VerifyEmailResult(
+                actionsRepository.get(action.getId()),
+                emailAuthenticator.getTokenForEmailAddress(emailAddress),
+                redirectTo);
+    }
+
+    private Action handleAddRelationship(Authentication authentication, Action action) throws RelationshipException, UserException, ActionException {
+        final var userId = getUserId(authentication);
+        final var sourceUserId = action.getCreatedBy();
+        if (sourceUserId.equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot link to yourself.");
+        }
+        relationshipsRepository.add(
+                userRepository.get(sourceUserId),
+                userRepository.get(userId));
+        relationshipsRepository.add(
+                userRepository.get(userId),
+                userRepository.get(sourceUserId));
+        actionsRepository.setStatus(action, ActionStatus.DONE);
+        return actionsRepository.get(action.getId());
     }
 
     private String getUserId(Authentication authentication) {

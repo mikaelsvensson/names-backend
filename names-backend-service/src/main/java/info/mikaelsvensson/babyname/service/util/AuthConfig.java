@@ -33,7 +33,7 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
                 .csrf().disable()
 //                .anonymous().and()
                 .authorizeRequests()
-                .antMatchers(HttpMethod.POST, "/token").permitAll()
+                .antMatchers(HttpMethod.POST, "/token/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/actions/**/qr").permitAll()
                 .antMatchers(HttpMethod.POST, "/actions/**/invocation").permitAll()
                 .antMatchers(HttpMethod.GET, "/names").permitAll()
