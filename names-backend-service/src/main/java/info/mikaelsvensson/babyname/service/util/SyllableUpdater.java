@@ -8,20 +8,26 @@ import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
+
+import java.time.Instant;
 
 @Component
 public class SyllableUpdater {
 
+    private static final int BOOT_ORDER = ScbNameImporter.BOOT_ORDER + 1;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(SyllableUpdater.class);
 
-    public static final String SYSTEM_NAME = "syllableUpdater";
+    private static final String SYSTEM_NAME = "syllableUpdater";
 
     @Autowired
     private NamesRepository namesRepository;
@@ -29,24 +35,40 @@ public class SyllableUpdater {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private TaskScheduler scheduler;
+
     private User user;
 
     // About event listener: https://www.baeldung.com/running-setup-logic-on-startup-in-spring
     @EventListener
-    @Order(1000)
+    @Order(BOOT_ORDER)
     public void onApplicationEvent(ContextRefreshedEvent event) {
-        try {
-            for (Name name : namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null)) {
+        scheduler.schedule(() -> {
+            final var gcCounter = new MutableInt(0);
 
-                final var expectedSyllableCount = Double.valueOf(NameFeature.syllableCount(name.getName()));
-                final var attribute = name.getAttribute(AttributeKey.SYLLABLE_COUNT);
-                if (attribute.isEmpty() || !expectedSyllableCount.equals(attribute.get().getValue())) {
-                    namesRepository.setNumericAttribute(name, getUser(), AttributeKey.SYLLABLE_COUNT, expectedSyllableCount);
+            LOGGER.info("Syllable update started");
+            try {
+                for (Name name : namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null)) {
+
+                    final var expectedSyllableCount = Double.valueOf(NameFeature.syllableCount(name.getName()));
+                    final var attribute = name.getAttribute(AttributeKey.SYLLABLE_COUNT);
+                    if (attribute.isEmpty() || !expectedSyllableCount.equals(attribute.get().getValue())) {
+                        namesRepository.setNumericAttribute(name, getUser(), AttributeKey.SYLLABLE_COUNT, expectedSyllableCount);
+                    }
+
+                    gcCounter.increment();
+                    if (gcCounter.intValue() % 1000 == 0) {
+                        LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
+                        System.gc();
+                    }
                 }
+                LOGGER.info("Syllable update done");
+                System.gc();
+            } catch (NameException e) {
+                LOGGER.error("Error when checking syllable counts.", e);
             }
-        } catch (NameException e) {
-            LOGGER.error("Error when checking syllable counts.", e);
-        }
+        }, Instant.now().plusSeconds(1));
     }
 
     public User getUser() {
