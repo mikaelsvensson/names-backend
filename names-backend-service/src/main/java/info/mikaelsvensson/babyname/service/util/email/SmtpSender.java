@@ -1,5 +1,7 @@
 package info.mikaelsvensson.babyname.service.util.email;
 
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -15,6 +17,9 @@ public class SmtpSender implements EmailSender {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Autowired
+    private Metrics metrics;
+
     @Override
     public void send(String to, String subject, String textBody, String htmlBody) throws EmailSenderException {
         try {
@@ -26,6 +31,7 @@ public class SmtpSender implements EmailSender {
             helper.setText(textBody, htmlBody);
 
             mailSender.send(message);
+            metrics.logEvent(MetricEvent.EMAIL_SENT);
         } catch (MessagingException e) {
             throw new EmailSenderException("Failed to send email", e);
         }

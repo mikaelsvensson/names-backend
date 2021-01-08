@@ -3,10 +3,11 @@ package info.mikaelsvensson.babyname.service.controller;
 import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
-import info.mikaelsvensson.babyname.service.util.AuthJwtService;
-import info.mikaelsvensson.babyname.service.util.JwtUser;
+import info.mikaelsvensson.babyname.service.util.*;
 import info.mikaelsvensson.babyname.service.util.auth.EmailAuthenticator;
 import info.mikaelsvensson.babyname.service.util.auth.FacebookAuthenticator;
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ public class AuthController {
     @Autowired
     private EmailAuthenticator emailAuthenticator;
 
+    @Autowired
+    private Metrics metrics;
+
 //    @PostConstruct
 //    private void debug() {
 //        try {
@@ -56,6 +60,8 @@ public class AuthController {
             var providerUserId = authenticator.getId(request.data);
 
             final var user = getOrCreateUser(request.provider, providerUserId);
+
+            metrics.logEvent(MetricEvent.LOG_IN);
 
             return new AuthTokenResponse(authJwtService.encode(new JwtUser(user.getId())));
         } catch (UserAuthenticatorException e) {

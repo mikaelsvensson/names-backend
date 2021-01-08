@@ -1,7 +1,10 @@
 package info.mikaelsvensson.babyname.service.util.email;
 
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
@@ -27,19 +30,21 @@ public class MailgunSender implements EmailSender {
     final private String from;
     final private String endpoint;
     final private String apiKey;
+    final private Metrics metrics;
 
     public MailgunSender(
             @Value("${mailgun.from}") String from,
             @Value("${mailgun.endpoint}") String endpoint,
-            @Value("${mailgun.apiKey}") String apiKey) {
+            @Value("${mailgun.apiKey}") String apiKey,
+            @Autowired Metrics metrics) {
         this.from = from;
         this.endpoint = endpoint;
         this.apiKey = apiKey;
+        this.metrics = metrics;
     }
 
     @Override
     public void send(String to, String subject, String textBody, String htmlBody) throws EmailSenderException {
-
         try {
             final var body = ofFormData(Map.of(
                     "from", from,
@@ -65,6 +70,7 @@ public class MailgunSender implements EmailSender {
             final var rawBody = response.body();
             if (response.statusCode() == HttpStatus.OK.value()) {
                 LOGGER.info("Sent email to {}", to);
+                metrics.logEvent(MetricEvent.EMAIL_SENT);
             } else {
                 LOGGER.warn("Failed to send email to {} with status code {} and body {}", to, response.statusCode(), rawBody);
             }

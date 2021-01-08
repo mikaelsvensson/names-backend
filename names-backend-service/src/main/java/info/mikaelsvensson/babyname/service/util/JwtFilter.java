@@ -1,5 +1,7 @@
 package info.mikaelsvensson.babyname.service.util;
 
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,11 +11,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.www.BasicAuthenticationConverter;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.annotation.PostConstruct;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -29,13 +29,16 @@ public class JwtFilter extends OncePerRequestFilter {
     private final AuthJwtService jwtService;
     private final String adminUsername;
     private final String adminPassword;
+    private final Metrics metrics;
 
     public JwtFilter(@Autowired AuthJwtService jwtService,
                      @Value("${admin.user.username}") String adminUsername,
-                     @Value("${admin.user.password}") String adminPassword) {
+                     @Value("${admin.user.password}") String adminPassword,
+                     @Autowired Metrics metrics) {
         this.jwtService = jwtService;
         this.adminUsername = adminUsername;
         this.adminPassword = adminPassword;
+        this.metrics = metrics;
     }
 
 //    @PostConstruct
@@ -48,6 +51,7 @@ public class JwtFilter extends OncePerRequestFilter {
         final var authHeader = Optional.ofNullable(req.getHeader(HttpHeaders.AUTHORIZATION)).orElse("");
         if (authHeader.startsWith("Bearer ")) {
             final var userId = jwtService.decode(authHeader.substring("Bearer ".length())).getName();
+            metrics.logUniqueString(MetricEvent.ACTIVE_USER, userId);
             SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(new JwtUser(userId), null, Collections.singletonList(new SimpleGrantedAuthority("USER"))));
         } else if (authHeader.startsWith("Basic ")) {
             UsernamePasswordAuthenticationToken authRequest = new BasicAuthenticationConverter().convert(req);

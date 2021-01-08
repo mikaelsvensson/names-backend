@@ -3,6 +3,8 @@ package info.mikaelsvensson.babyname.service.repository.users;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.UserProvider;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -23,6 +25,9 @@ public class DbUserRepository implements UserRepository {
 
     @Autowired
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    @Autowired
+    private Metrics metrics;
 
     @Override
     public List<User> all() throws UserException {
@@ -45,6 +50,7 @@ public class DbUserRepository implements UserRepository {
                             "id", user.getId(),
                             "createdAt", user.getCreatedAt().toEpochMilli()
                     ));
+            metrics.logEvent(MetricEvent.USER_ADDED);
             return user;
         } catch (DataAccessException e) {
             throw new UserException(e.getMessage());
@@ -65,6 +71,7 @@ public class DbUserRepository implements UserRepository {
                                     : provider.name().toLowerCase() + ":" + providerValue,
                             "createdAt", user.getCreatedAt().toEpochMilli()
                     ));
+            metrics.logEvent(MetricEvent.USER_ADDED);
             return user;
         } catch (DataAccessException e) {
             throw new UserException(e.getMessage());

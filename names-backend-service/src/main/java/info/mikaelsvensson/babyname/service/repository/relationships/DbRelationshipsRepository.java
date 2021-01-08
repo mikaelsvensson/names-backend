@@ -2,6 +2,8 @@ package info.mikaelsvensson.babyname.service.repository.relationships;
 
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.repository.users.DbUserRepository;
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ public class DbRelationshipsRepository implements RelationshipsRepository {
     @Autowired
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+    @Autowired
+    private Metrics metrics;
+
     @Override
     public void add(User user, User relatedUser) throws RelationshipException {
         try {
@@ -32,6 +37,7 @@ public class DbRelationshipsRepository implements RelationshipsRepository {
                             "relatedUserId", relatedUser.getId()
                     ));
             LOGGER.info("Linked {} and {}.", user.getId(), relatedUser.getId());
+            metrics.logEvent(MetricEvent.RELATIONSHIP_ADDED);
         } catch (DataAccessException e) {
             throw new RelationshipException(e.getMessage());
         }

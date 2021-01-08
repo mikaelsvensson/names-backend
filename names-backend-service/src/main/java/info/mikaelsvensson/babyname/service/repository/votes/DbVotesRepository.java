@@ -3,6 +3,8 @@ package info.mikaelsvensson.babyname.service.repository.votes;
 import info.mikaelsvensson.babyname.service.model.Name;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.Vote;
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,9 @@ public class DbVotesRepository implements VotesRepository {
 
     @Autowired
     private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    @Autowired
+    private Metrics metrics;
 
     @Override
     public List<Vote> all(User user) throws VoteException {
@@ -56,6 +61,7 @@ public class DbVotesRepository implements VotesRepository {
                 throw new VoteException("Query inserted " + rowsInserted + " rows."); // Throw here, and catch right below.
             }
             LOGGER.info("User {} cast {} vote for name {}.", user.getId(), value, name.getId());
+            metrics.logEvent(MetricEvent.VOTE);
         } catch (DataAccessException | VoteException e) {
             try {
                 final var rowsUpdated = namedParameterJdbcTemplate.update("UPDATE votes SET value = :value, updated_at = :updatedAt WHERE user_id = :userId AND name_id = :nameId",
@@ -69,6 +75,7 @@ public class DbVotesRepository implements VotesRepository {
                     throw new VoteException("Query updated " + rowsUpdated + " rows.");
                 }
                 LOGGER.info("User {} changed to {} vote for name {}.", user.getId(), value, name.getId());
+                metrics.logEvent(MetricEvent.VOTE);
             } catch (DataAccessException ex) {
                 LOGGER.warn("Failed to cast vote. User {} could not change to {} vote for name {}. Reason: {}.", user.getId(), value, name.getId(), ex.getMessage());
                 throw new VoteException(ex.getMessage());
