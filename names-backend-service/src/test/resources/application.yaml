@@ -6,12 +6,20 @@ spring:
 
 actions:
   qrUrlTemplate: "http://example.com/{actionId}"
+  verifyEmailUrlTemplate: "http://example.com/{actionId}"
 
 jwt:
   secret: "SECRET"
 
 facebook:
   secret: "SECRET"
+
+admin:
+  testMail:
+    to: admin@example.com
+  user:
+    username: admin
+    password: password
 
 recommender:
   unigramConsidered: true
