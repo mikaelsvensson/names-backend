@@ -12,7 +12,3 @@ facebook:
 
 recommender:
   unigramConsidered: true
-
-metricsReport:
-  to: admin@example.om
-  schedule: "0 0 2 * * *" # Every night at 2 AM

@@ -8,16 +8,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+@Profile("metrics-report")
 @Service
 public class MetricsReportSender {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MetricsReportSender.class);
-
-//    @Autowired
-//    private TaskScheduler scheduler;
 
     @Autowired
     private EmailSender emailSender;
@@ -27,12 +26,6 @@ public class MetricsReportSender {
 
     @Autowired
     private Metrics metrics;
-
-//    @Scheduled(fixedRateString = "PT5S")
-//    private void testTask() {
-//        LOGGER.info("PONG");
-//        scheduler.schedule(() -> LOGGER.info("Executed PONG"), Instant.now());
-//    }
 
     @Scheduled(cron = "${metricsReport.schedule}") // Every minute
     private synchronized void dailyReport() {

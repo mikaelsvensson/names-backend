@@ -24,6 +24,3 @@ admin:
 recommender:
   unigramConsidered: true
 
-metricsReport:
-  to: "admin@example.com"
-  schedule: "0 0 1 * * *" # Every day at 1 AM
