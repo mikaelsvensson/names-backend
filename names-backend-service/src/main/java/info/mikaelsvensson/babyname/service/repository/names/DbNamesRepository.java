@@ -3,10 +3,10 @@ package info.mikaelsvensson.babyname.service.repository.names;
 import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import info.mikaelsvensson.babyname.service.util.NameFeature;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
@@ -18,17 +18,21 @@ import java.util.*;
 @Service
 public class DbNamesRepository implements NamesRepository {
 
-    @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    public DbNamesRepository(@Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+    }
 
     @Override
-    public List<Name> all(Set<String> userIds,
-                          String namePrefix,
-                          int offset,
-                          int limit,
-                          Set<String> voteUserIds,
-                          Set<FilterAttributeNumeric> numericFilters,
-                          Set<FilterVote> filterVotes) throws NameException {
+    public Iterator<Name> all(Set<String> userIds,
+                              String namePrefix,
+                              int offset,
+                              int limit,
+                              Set<String> voteUserIds,
+                              Set<FilterAttributeNumeric> numericFilters,
+                              Set<FilterVote> filterVotes
+    ) throws NameException {
         return find(new Condition()
                         .userIds(userIds)
                         .namePrefix(namePrefix)
@@ -60,6 +64,12 @@ public class DbNamesRepository implements NamesRepository {
                             "createdBy", user.getId(),
                             "createdAt", Instant.now().toEpochMilli()
                     ));
+            for (Attribute<?> attribute : obj.getAttributes()) {
+                if (attribute instanceof AttributeNumeric) {
+                    AttributeNumeric attributeNumeric = (AttributeNumeric) attribute;
+                    setNumericAttribute(obj, user, attributeNumeric.getKey(), attributeNumeric.getValue());
+                }
+            }
 
             setNumericAttribute(obj, user, AttributeKey.SYLLABLE_COUNT, (double) NameFeature.syllableCount(name));
             return obj;
@@ -68,7 +78,78 @@ public class DbNamesRepository implements NamesRepository {
         }
     }
 
-    private List<Name> find(Condition condition, int offset, int limit) throws NameException {
+    private static class NamesResultSetIterator implements Iterator<Name> {
+        private final SqlRowSet rs;
+        private final int offset;
+        private final int limit;
+
+        private Name currentName = null;
+        private String prevRowName = null;
+        private int currentIndex = -1;
+        private int returnedNames = 0;
+
+        public NamesResultSetIterator(SqlRowSet rs, int offset, int limit) {
+            this.rs = rs;
+            this.offset = offset;
+            this.limit = limit;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return !rs.isAfterLast() && returnedNames < limit;
+        }
+
+        @Override
+        public Name next() {
+            Name returnedName = currentName;
+            while (rs.next()) {
+                final var rsId = rs.getString("id");
+                final var rsName = rs.getString("name");
+                final var rsNafKey = rs.getString("naf_key");
+                final var isNewName = !Objects.equals(rsName, prevRowName);
+                prevRowName = rsName;
+                if (isNewName) {
+                    currentIndex++;
+                    if (currentIndex < offset || returnedNames >= limit) {
+                        continue;
+                    }
+
+                    var newName = new Name(
+                            rsName,
+                            rsId,
+                            new HashSet<>()
+                    );
+                    if (currentName == null) {
+                        returnedName = currentName = newName;
+                    } else {
+                        returnedName = currentName;
+                        currentName = newName;
+                    }
+                } else {
+                    if (currentIndex < offset || returnedNames >= limit) {
+                        continue;
+                    }
+                }
+                if (rsNafKey != null) {
+                    currentName.addAttribute(new AttributeNumeric(
+                            AttributeKey.valueOf(rsNafKey),
+                            rs.getDouble("naf_value")
+                    ));
+                }
+                if (returnedName != currentName) {
+                    break;
+                }
+            }
+            if (returnedName == null) {
+                throw new NoSuchElementException();
+            }
+            returnedNames++;
+            return returnedName;
+        }
+    }
+
+
+    private Iterator<Name> find(Condition condition, int offset, int limit) throws NameException {
         try {
             final var params = new HashMap<String, Object>();
             final var sqlWhere = new StringBuilder("TRUE");
@@ -123,10 +204,7 @@ public class DbNamesRepository implements NamesRepository {
                 }
             }
 
-            var result = new ArrayList<Name>();
-            final var nameIndex = new MutableInt(-1);
-            final var prevIdHash = new MutableInt(0);
-            namedParameterJdbcTemplate.query("" +
+            var rs = namedParameterJdbcTemplate.queryForRowSet("" +
                             "SELECT " +
                             "   n.* " +
                             "   ,naf.key AS naf_key " +
@@ -140,36 +218,9 @@ public class DbNamesRepository implements NamesRepository {
                             "ORDER BY " +
                             "   n.name " +
                             "   ,naf.key ",
-                    params,
-                    rs -> {
-                        Name currentName = result.size() > 0 ? result.get(result.size() - 1) : null;
-                        final var rsId = rs.getString("id");
-                        final var rsName = rs.getString("name");
-                        final var rsNafKey = rs.getString("naf_key");
-                        final var isNewName = prevIdHash.intValue() != rsId.hashCode();
-                        prevIdHash.setValue(rsId.hashCode());
-                        if (isNewName) {
-                            nameIndex.add(1);
-                        }
-                        if (nameIndex.intValue() < offset || nameIndex.intValue() > offset + limit) {
-                            return;
-                        }
-                        if (isNewName) {
-                            currentName = new Name(
-                                    rsName,
-                                    rsId,
-                                    new HashSet<>()
-                            );
-                            result.add(currentName);
-                        }
-                        if (rsNafKey != null) {
-                            currentName.addAttribute(new AttributeNumeric(
-                                    AttributeKey.valueOf(rsNafKey),
-                                    rs.getDouble("naf_value")
-                            ));
-                        }
-                    });
-            return result;
+                    params);
+
+            return new NamesResultSetIterator(rs, offset, limit);
         } catch (DataAccessException e) {
             throw new NameException(e.getMessage());
         }
@@ -177,18 +228,20 @@ public class DbNamesRepository implements NamesRepository {
 
     @Override
     public Name get(String nameId) throws NameException {
-        return find(new Condition().nameId(nameId), 0, 1)
-                .stream()
-                .findFirst()
-                .orElseThrow(() -> new NameException("Could not find name"));
+        try {
+            return find(new Condition().nameId(nameId), 0, 1).next();
+        } catch (NoSuchElementException e) {
+            throw new NameException("Could not find name");
+        }
     }
 
     @Override
     public Optional<Name> getByName(String name) throws NameException {
-        return find(new Condition().nameExact(name), 0, 1)
-                .stream()
-                .findFirst()
-                .or(Optional::empty);
+        try {
+            return Optional.of(find(new Condition().nameExact(name), 0, 1).next());
+        } catch (NoSuchElementException e) {
+            return Optional.empty();
+        }
     }
 
     @Override

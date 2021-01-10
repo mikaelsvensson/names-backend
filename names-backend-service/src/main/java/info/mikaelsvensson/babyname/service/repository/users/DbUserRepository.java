@@ -23,11 +23,16 @@ import java.util.regex.Pattern;
 @Service
 public class DbUserRepository implements UserRepository {
 
-    @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    @Autowired
-    private Metrics metrics;
+    private final Metrics metrics;
+
+    public DbUserRepository(
+            @Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+            @Autowired Metrics metrics) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+        this.metrics = metrics;
+    }
 
     @Override
     public List<User> all() throws UserException {
