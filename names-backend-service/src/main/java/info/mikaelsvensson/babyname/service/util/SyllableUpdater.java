@@ -19,6 +19,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.NoSuchElementException;
 
 @Component
 public class SyllableUpdater {
@@ -49,8 +50,9 @@ public class SyllableUpdater {
 
             LOGGER.info("Syllable update started");
             try {
-                for (Name name : namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null)) {
-
+                final var names = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null);
+                while (names.hasNext()) {
+                    Name name = names.next();
                     final var expectedSyllableCount = Double.valueOf(NameFeature.syllableCount(name.getName()));
                     final var attribute = name.getAttribute(AttributeKey.SYLLABLE_COUNT);
                     if (attribute.isEmpty() || !expectedSyllableCount.equals(attribute.get().getValue())) {
@@ -67,6 +69,8 @@ public class SyllableUpdater {
                 System.gc();
             } catch (NameException e) {
                 LOGGER.error("Error when checking syllable counts.", e);
+            } catch (NoSuchElementException e) {
+                LOGGER.error("No names in database.", e);
             }
         }, Instant.now().plusSeconds(1));
     }

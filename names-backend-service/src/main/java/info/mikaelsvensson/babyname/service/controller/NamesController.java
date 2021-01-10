@@ -8,10 +8,7 @@ import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
-import info.mikaelsvensson.babyname.service.util.Recommender;
-import info.mikaelsvensson.babyname.service.util.RecommenderException;
-import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
-import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
+import info.mikaelsvensson.babyname.service.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,14 +115,14 @@ public class NamesController {
                     ))
                     .collect(Collectors.toSet());
 
-            final var names = namesRepository.all(
+            final var names = IteratorUtils.toList(namesRepository.all(
                     userIds,
                     namePrefix,
                     offset,
                     limit + 1,
                     null,
                     numericFilters,
-                    voteFilters);
+                    voteFilters));
             final var isLast = names.size() < limit + 1;
             final var returnedNames = isLast ? names : names.subList(0, limit);
             return new SearchResult(
@@ -206,8 +203,7 @@ public class NamesController {
     public List<ExtendedName> getSimilar(Authentication authentication, @PathVariable("nameId") String nameId) {
         try {
             final var refName = namesRepository.get(nameId);
-            final var otherNames = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null)
-                    .stream()
+            final var otherNames = IteratorUtils.toStream(namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null))
                     .filter(name -> !name.getId().equals(refName.getId()))
                     .collect(Collectors.toList());
 

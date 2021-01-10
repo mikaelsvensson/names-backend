@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,32 +40,66 @@ public class Recommender {
         this.isUnigramConsidered = isUnigramConsidered;
     }
 
-    public List<Name> getRecommendation(User user, Set<FilterAttributeNumeric> numericFilters) throws RecommenderException {
-        try {
-            final List<Name> namesToScore = getNamesToScore(user, numericFilters);
+    private static class NameScore {
+        private final Name name;
+        private final Double score;
 
-            scoreNames(user, namesToScore);
+        public NameScore(Name name, Double score) {
+            this.name = name;
+            this.score = score;
+        }
 
-            return namesToScore
-                    .stream()
-                    .sorted((o1, o2) ->
-                            ((Double) (o2
-                                    .getAttribute(AttributeKey.RECOMMENDATION_VALUE)
-                                    .orElse(new AttributeNumeric(AttributeKey.RECOMMENDATION_VALUE, 0.0)))
-                                    .getValue()
-                            ).compareTo((Double) (o1
-                                    .getAttribute(AttributeKey.RECOMMENDATION_VALUE)
-                                    .orElse(new AttributeNumeric(AttributeKey.RECOMMENDATION_VALUE, 0.0)))
-                                    .getValue()))
-                    .limit(100)
-                    .collect(Collectors.toList());
-        } catch (VoteException | RelationshipException | NameException e) {
-            throw new RecommenderException(e);
+        public Double getScore() {
+            return score;
         }
     }
 
-    private List<Name> getNamesToScore(User user, Set<FilterAttributeNumeric> numericFilters) throws RelationshipException, NameException {
+    public List<Name> getRecommendation(User user, Set<FilterAttributeNumeric> numericFilters) throws RecommenderException {
+        try {
+            final var ngramScores = this.getNgramScores(user);
 
+            final Iterator<Name> namesToScore = getNamesToScore(user, numericFilters);
+
+            TreeSet<NameScore> namesToRecommend = new TreeSet<>(Comparator.comparingDouble(NameScore::getScore).reversed());
+
+            while (namesToScore.hasNext()) {
+                Name name = namesToScore.next();
+
+                final var score = this.getScore(name, ngramScores);
+
+                final var nameScore = new NameScore(name, score);
+                if (namesToRecommend.size() < 100) {
+                    namesToRecommend.add(nameScore);
+                } else {
+                    NameScore lowestScoreName = namesToRecommend.last();
+                    if (score > lowestScoreName.score) {
+                        namesToRecommend.add(nameScore);
+                        namesToRecommend.remove(lowestScoreName);
+                    }
+                }
+            }
+
+            final var ngramScoreMin = namesToRecommend.stream().mapToDouble(NameScore::getScore).min().orElse(Integer.MIN_VALUE);
+            final var ngramScoreMax = namesToRecommend.stream().mapToDouble(NameScore::getScore).max().orElse(Integer.MAX_VALUE);
+
+            return namesToRecommend
+                    .stream()
+                    .map(nameScore -> {
+                        final var normalizedNgramScore = (nameScore.score - ngramScoreMin) / (ngramScoreMax - ngramScoreMin);
+                        nameScore.name.addAttribute(new AttributeNumeric(
+                                AttributeKey.RECOMMENDATION_VALUE,
+                                normalizedNgramScore));
+                        return nameScore.name;
+                    })
+                    .collect(Collectors.toList());
+        } catch (VoteException | RelationshipException | NameException e) {
+            throw new RecommenderException(e);
+        } catch (NoSuchElementException e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private Iterator<Name> getNamesToScore(User user, Set<FilterAttributeNumeric> numericFilters) throws RelationshipException, NameException {
         return namesRepository.all(
                 getNameOwnerUserIds(user),
                 null,
@@ -85,54 +120,26 @@ public class Recommender {
         return userIds;
     }
 
-    private void scoreNames(User user, List<Name> namesToScore) throws VoteException, RelationshipException, NameException {
-        final var stats = this.getNgramStats(user);
-
-        final var rawNgramScores = new HashMap<String, Double>();
-        namesToScore.forEach(name -> {
-            final var ngramScore = this.getNgramScore(name, stats);
-            rawNgramScores.put(name.getId(), ngramScore);
-        });
-
-        final var ngramScoreMin = rawNgramScores.values().stream().mapToDouble(value -> value).min().orElse(Integer.MIN_VALUE);
-        final var ngramScoreMax = rawNgramScores.values().stream().mapToDouble(value -> value).max().orElse(Integer.MAX_VALUE);
-
-        namesToScore.forEach(name -> {
-            final var normalizedNgramScore = (rawNgramScores.get(name.getId()) - ngramScoreMin) / (ngramScoreMax - ngramScoreMin);
-            name.addAttribute(new AttributeNumeric(
-                    AttributeKey.RECOMMENDATION_VALUE,
-                    normalizedNgramScore));
-        });
-    }
-
-    private Double getNgramScore(Name name, Map<String, Integer> stats) {
+    private Double getScore(Name name, Map<String, Integer> stats) {
         return ngrams(name.getName())
                 .stream()
                 .mapToDouble(value -> stats.getOrDefault(value, 0))
                 .sum();
     }
 
-    private Map<String, Integer> getNgramStats(User user) throws VoteException, RelationshipException, NameException {
+    private Map<String, Integer> getNgramScores(User user) throws VoteException, RelationshipException, NameException {
         final var votes = this.votesRepository.all(user);
 
-        final var namesWithVotes = namesRepository
-                .all(
+        final var namesWithVotes = IteratorUtils.toStream(
+                namesRepository.all(
                         getNameOwnerUserIds(user),
                         null,
                         0,
                         Integer.MAX_VALUE,
                         null,
                         null,
-                        Collections.singleton(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.ANY_VOTE))
-                )
-                .stream()
-                .collect(
-                        Collectors.toMap(
-                                Name::getId,
-                                name -> name,
-                                (name1, name2) -> name1
-                        )
-                );
+                        Collections.singleton(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.ANY_VOTE))))
+                .collect(Collectors.toMap(Name::getId, Function.identity()));
 
         final var counts = new HashMap<String, Integer>();
         final var voteByName = votes.stream()
