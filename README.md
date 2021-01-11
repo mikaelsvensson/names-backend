@@ -87,3 +87,10 @@ To avoid abuse, all test mails will be sent to the hardcoded address specified i
     $ curl -k -X POST -u admin:*** https://localhost:8443/admin/test-mail
     
 Note that the above command assumes you have enabled https locally.
+
+## Ping
+
+The service has a "ping" endpoint for verifying that the service is up-and-running with a working
+database connection.
+
+    $ curl -k -X GET -u admin:*** https://localhost:8443/admin/ping
