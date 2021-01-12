@@ -12,6 +12,7 @@ import org.apache.commons.lang3.mutable.MutableInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
@@ -30,6 +31,9 @@ public class SyllableUpdater {
 
     private static final String SYSTEM_NAME = "syllableUpdater";
 
+    @Value("${syllableUpdater.onStart:true}")
+    private boolean onStart;
+
     @Autowired
     private NamesRepository namesRepository;
 
@@ -45,6 +49,10 @@ public class SyllableUpdater {
     @EventListener
     @Order(BOOT_ORDER)
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        if (!onStart) {
+            LOGGER.info("Syllable update skipped.");
+            return;
+        }
         scheduler.schedule(() -> {
             final var gcCounter = new MutableInt(0);
 

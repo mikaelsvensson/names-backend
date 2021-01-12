@@ -49,6 +49,9 @@ public class ScbNameImporter {
 
     public static final String SYSTEM_NAME = "scbImporter";
 
+    @Value("${scbImporter.onStart:true}")
+    private boolean onStart;
+
     @Value("classpath:names_sorted.txt")
     private Resource database;
 
@@ -67,6 +70,10 @@ public class ScbNameImporter {
     @EventListener
     @Order(BOOT_ORDER)
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        if (!onStart) {
+            LOGGER.info("SCB data sync skipped.");
+            return;
+        }
         scheduler.schedule(() -> {
             LOGGER.info("SCB data sync started.");
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
