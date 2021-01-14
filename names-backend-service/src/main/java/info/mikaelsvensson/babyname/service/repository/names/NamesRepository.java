@@ -9,10 +9,11 @@ import org.springframework.stereotype.Repository;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 @Repository
 public interface NamesRepository {
-    Iterator<Name> all(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, Set<FilterAttributeNumeric> numericFilters, Set<FilterVote> filterVotes) throws NameException;
+    void all(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, Set<FilterAttributeNumeric> numericFilters, Set<FilterVote> filterVotes, Consumer<Name> nameConsumer) throws NameException;
 
     Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException;
 

@@ -115,14 +115,16 @@ public class NamesController {
                     ))
                     .collect(Collectors.toSet());
 
-            final var names = IteratorUtils.toList(namesRepository.all(
+            final var names = new ArrayList<Name>();
+            namesRepository.all(
                     userIds,
                     namePrefix,
                     offset,
                     limit + 1,
                     null,
                     numericFilters,
-                    voteFilters));
+                    voteFilters,
+                    names::add);
             final var isLast = names.size() < limit + 1;
             final var returnedNames = isLast ? names : names.subList(0, limit);
             return new SearchResult(
@@ -203,9 +205,12 @@ public class NamesController {
     public List<ExtendedName> getSimilar(Authentication authentication, @PathVariable("nameId") String nameId) {
         try {
             final var refName = namesRepository.get(nameId);
-            final var otherNames = IteratorUtils.toStream(namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null))
-                    .filter(name -> !name.getId().equals(refName.getId()))
-                    .collect(Collectors.toList());
+            final var otherNames = new ArrayList<Name>();
+            namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null, name -> {
+                if (!name.getId().equals(refName.getId())) {
+                    otherNames.add(name);
+                }
+            });
 
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;

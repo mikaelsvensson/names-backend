@@ -1,12 +1,8 @@
 package info.mikaelsvensson.babyname.service.repository.names;
 
-import info.mikaelsvensson.babyname.service.model.Attribute;
-import info.mikaelsvensson.babyname.service.model.AttributeKey;
-import info.mikaelsvensson.babyname.service.model.AttributeNumeric;
-import info.mikaelsvensson.babyname.service.model.User;
+import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.users.DbUserRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
-import info.mikaelsvensson.babyname.service.util.IteratorUtils;
 import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import liquibase.Liquibase;
 import liquibase.database.jvm.JdbcConnection;
@@ -21,6 +17,7 @@ import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 
@@ -63,9 +60,8 @@ class DbNamesRepositoryTest {
     void all_oneNameWithoutAttributes() throws NameException {
         namesRepository.add("Alice", user, Collections.emptySet());
 
-        final var iterator = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null);
-
-        final var actual = IteratorUtils.toList(iterator);
+        final var actual = new ArrayList<Name>();
+        namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null, actual::add);
 
         assertThat(actual).hasSize(1);
         assertThat(actual.get(0).getName()).isEqualTo("Alice");
@@ -76,9 +72,8 @@ class DbNamesRepositoryTest {
         namesRepository.add("Alice", user, Collections.emptySet());
         namesRepository.add("Bob", user, Collections.emptySet());
 
-        final var iterator = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null);
-
-        final var actual = IteratorUtils.toList(iterator);
+        final var actual = new ArrayList<Name>();
+        namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null, actual::add);
 
         assertThat(actual).hasSize(2);
         assertThat(actual.get(0).getName()).isEqualTo("Alice");
@@ -92,9 +87,8 @@ class DbNamesRepositoryTest {
         namesRepository.add("Alicia", user, Collections.emptySet());
         namesRepository.add("Bob", user, Collections.emptySet());
 
-        final var iterator = namesRepository.all(null, "Alic", 0, Integer.MAX_VALUE, null, null, null);
-
-        final var actual = IteratorUtils.toList(iterator);
+        final var actual = new ArrayList<Name>();
+        namesRepository.all(null, "Alic", 0, Integer.MAX_VALUE, null, null, null, actual::add);
 
         assertThat(actual).hasSize(2);
         assertThat(actual.get(0).getName()).isEqualTo("Alice");
@@ -117,9 +111,8 @@ class DbNamesRepositoryTest {
                 new AttributeNumeric(AttributeKey.SCB_PERCENT_OF_POPULATION, 0.3)
         ));
 
-        final var iterator = namesRepository.all(null, "Alic", 0, Integer.MAX_VALUE, null, null, null);
-
-        final var actual = IteratorUtils.toList(iterator);
+        final var actual = new ArrayList<Name>();
+        namesRepository.all(null, "Alic", 0, Integer.MAX_VALUE, null, null, null, actual::add);
 
         assertThat(actual).hasSize(2);
         assertThat(actual.get(0).getName()).isEqualTo("Alice");
@@ -147,24 +140,24 @@ class DbNamesRepositoryTest {
         namesRepository.add("Bob 4", user, Collections.emptySet());
         namesRepository.add("Carol", user, Collections.emptySet());
 
-        final var iterator0 = namesRepository.all(null, "Bob", 0, 2, null, null, null);
-        final var actual0 = IteratorUtils.toList(iterator0);
+        final var actual0 = new ArrayList<Name>();
+        namesRepository.all(null, "Bob", 0, 2, null, null, null, actual0::add);
         assertThat(actual0).hasSize(2);
         assertThat(actual0.get(0).getName()).isEqualTo("Bob 1");
         assertThat(actual0.get(0).getAttributes()).hasSize(1);
         assertThat(actual0.get(1).getName()).isEqualTo("Bob 2");
         assertThat(actual0.get(1).getAttributes()).hasSize(2);
 
-        final var iterator1 = namesRepository.all(null, "Bob", 1, 2, null, null, null);
-        final var actual1 = IteratorUtils.toList(iterator1);
+        final var actual1 = new ArrayList<Name>();
+        namesRepository.all(null, "Bob", 1, 2, null, null, null, actual1::add);
         assertThat(actual1).hasSize(2);
         assertThat(actual1.get(0).getName()).isEqualTo("Bob 2");
         assertThat(actual1.get(0).getAttributes()).hasSize(2);
         assertThat(actual1.get(1).getName()).isEqualTo("Bob 3");
         assertThat(actual1.get(1).getAttributes()).hasSize(1);
 
-        final var iterator2 = namesRepository.all(null, "Bob", 2, 2, null, null, null);
-        final var actual2 = IteratorUtils.toList(iterator2);
+        final var actual2 = new ArrayList<Name>();
+        namesRepository.all(null, "Bob", 2, 2, null, null, null, actual2::add);
         assertThat(actual2).hasSize(2);
         assertThat(actual2.get(0).getName()).isEqualTo("Bob 3");
         assertThat(actual2.get(0).getAttributes()).hasSize(1);
@@ -174,8 +167,8 @@ class DbNamesRepositoryTest {
 
     @Test
     void all_emptyDatabase() throws NameException {
-        final var iterator = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null);
-
-        assertThat(IteratorUtils.toList(iterator)).isEmpty();
+        final var actual = new ArrayList<Name>();
+        namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null, actual::add);
+        assertThat(actual).isEmpty();
     }
 }

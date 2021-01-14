@@ -5,14 +5,18 @@ import info.mikaelsvensson.babyname.service.util.IdUtils;
 import info.mikaelsvensson.babyname.service.util.NameFeature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Consumer;
 
 @Repository
 @Service
@@ -25,22 +29,24 @@ public class DbNamesRepository implements NamesRepository {
     }
 
     @Override
-    public Iterator<Name> all(Set<String> userIds,
-                              String namePrefix,
-                              int offset,
-                              int limit,
-                              Set<String> voteUserIds,
-                              Set<FilterAttributeNumeric> numericFilters,
-                              Set<FilterVote> filterVotes
+    public void all(Set<String> userIds,
+                    String namePrefix,
+                    int offset,
+                    int limit,
+                    Set<String> voteUserIds,
+                    Set<FilterAttributeNumeric> numericFilters,
+                    Set<FilterVote> filterVotes,
+                    Consumer<Name> nameConsumer
     ) throws NameException {
-        return find(new Condition()
+        find(new Condition()
                         .userIds(userIds)
                         .namePrefix(namePrefix)
                         .voteUserIds(voteUserIds)
                         .numericFilters(numericFilters)
                         .filterVotes(filterVotes),
                 offset,
-                limit);
+                limit,
+                nameConsumer);
     }
 
     @Override
@@ -78,30 +84,24 @@ public class DbNamesRepository implements NamesRepository {
         }
     }
 
-    private static class NamesResultSetIterator implements Iterator<Name> {
-        private final SqlRowSet rs;
+    private static class NamesResultSetIterator implements ResultSetExtractor<Integer> {
+        private final Consumer<Name> nameConsumer;
         private final int offset;
         private final int limit;
 
-        private Name currentName = null;
-        private String prevRowName = null;
-        private int currentIndex = -1;
-        private int returnedNames = 0;
 
-        public NamesResultSetIterator(SqlRowSet rs, int offset, int limit) {
-            this.rs = rs;
+        public NamesResultSetIterator(Consumer<Name> nameConsumer, int offset, int limit) {
+            this.nameConsumer = nameConsumer;
             this.offset = offset;
             this.limit = limit;
         }
 
         @Override
-        public boolean hasNext() {
-            return !rs.isAfterLast() && returnedNames < limit;
-        }
-
-        @Override
-        public Name next() {
-            Name returnedName = currentName;
+        public Integer extractData(ResultSet rs) throws SQLException, DataAccessException {
+            Name currentName = null;
+            String prevRowName = null;
+            var currentIndex = -1;
+            var returnedNames = 0;
             while (rs.next()) {
                 final var rsId = rs.getString("id");
                 final var rsName = rs.getString("name");
@@ -110,23 +110,25 @@ public class DbNamesRepository implements NamesRepository {
                 prevRowName = rsName;
                 if (isNewName) {
                     currentIndex++;
-                    if (currentIndex < offset || returnedNames >= limit) {
+                    if (currentIndex < offset) {
                         continue;
                     }
 
-                    var newName = new Name(
+                    if (currentName != null) {
+                        returnedNames++;
+                        nameConsumer.accept(currentName);
+
+                        if (returnedNames == limit) {
+                            return returnedNames;
+                        }
+                    }
+                    currentName = new Name(
                             rsName,
                             rsId,
                             new HashSet<>()
                     );
-                    if (currentName == null) {
-                        returnedName = currentName = newName;
-                    } else {
-                        returnedName = currentName;
-                        currentName = newName;
-                    }
                 } else {
-                    if (currentIndex < offset || returnedNames >= limit) {
+                    if (currentIndex < offset) {
                         continue;
                     }
                 }
@@ -136,20 +138,17 @@ public class DbNamesRepository implements NamesRepository {
                             rs.getDouble("naf_value")
                     ));
                 }
-                if (returnedName != currentName) {
-                    break;
-                }
             }
-            if (returnedName == null) {
-                throw new NoSuchElementException();
+            if (currentName != null) {
+                returnedNames++;
+                nameConsumer.accept(currentName);
             }
-            returnedNames++;
-            return returnedName;
+            return returnedNames;
         }
     }
 
 
-    private Iterator<Name> find(Condition condition, int offset, int limit) throws NameException {
+    private void find(Condition condition, int offset, int limit, Consumer<Name> nameConsumer) throws NameException {
         try {
             final var params = new HashMap<String, Object>();
             final var sqlWhere = new StringBuilder("TRUE");
@@ -204,7 +203,7 @@ public class DbNamesRepository implements NamesRepository {
                 }
             }
 
-            var rs = namedParameterJdbcTemplate.queryForRowSet("" +
+            namedParameterJdbcTemplate.query("" +
                             "SELECT " +
                             "   n.* " +
                             "   ,naf.key AS naf_key " +
@@ -218,9 +217,8 @@ public class DbNamesRepository implements NamesRepository {
                             "ORDER BY " +
                             "   n.name " +
                             "   ,naf.key ",
-                    params);
-
-            return new NamesResultSetIterator(rs, offset, limit);
+                    params,
+                    new NamesResultSetIterator(nameConsumer, offset, limit));
         } catch (DataAccessException e) {
             throw new NameException(e.getMessage());
         }
@@ -228,18 +226,22 @@ public class DbNamesRepository implements NamesRepository {
 
     @Override
     public Name get(String nameId) throws NameException {
-        try {
-            return find(new Condition().nameId(nameId), 0, 1).next();
-        } catch (NoSuchElementException e) {
+        var res = new Name[]{null};
+        find(new Condition().nameId(nameId), 0, 1, name -> res[0] = name);
+        if (res[0] != null) {
+            return res[0];
+        } else {
             throw new NameException("Could not find name");
         }
     }
 
     @Override
     public Optional<Name> getByName(String name) throws NameException {
-        try {
-            return Optional.of(find(new Condition().nameExact(name), 0, 1).next());
-        } catch (NoSuchElementException e) {
+        var res = new Name[]{null};
+        find(new Condition().nameExact(name), 0, 1, n -> res[0] = n);
+        if (res[0] != null) {
+            return Optional.of(res[0]);
+        } else {
             return Optional.empty();
         }
     }

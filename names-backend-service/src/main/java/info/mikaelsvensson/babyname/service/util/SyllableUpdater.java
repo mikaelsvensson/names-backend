@@ -58,21 +58,23 @@ public class SyllableUpdater {
 
             LOGGER.info("Syllable update started");
             try {
-                final var names = namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null);
-                while (names.hasNext()) {
-                    Name name = names.next();
-                    final var expectedSyllableCount = Double.valueOf(NameFeature.syllableCount(name.getName()));
-                    final var attribute = name.getAttribute(AttributeKey.SYLLABLE_COUNT);
-                    if (attribute.isEmpty() || !expectedSyllableCount.equals(attribute.get().getValue())) {
-                        namesRepository.setNumericAttribute(name, getUser(), AttributeKey.SYLLABLE_COUNT, expectedSyllableCount);
-                    }
+                namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null, name -> {
+                    try {
+                        final var expectedSyllableCount = Double.valueOf(NameFeature.syllableCount(name.getName()));
+                        final var attribute = name.getAttribute(AttributeKey.SYLLABLE_COUNT);
+                        if (attribute.isEmpty() || !expectedSyllableCount.equals(attribute.get().getValue())) {
+                            namesRepository.setNumericAttribute(name, getUser(), AttributeKey.SYLLABLE_COUNT, expectedSyllableCount);
+                        }
 
-                    gcCounter.increment();
-                    if (gcCounter.intValue() % 1000 == 0) {
-                        LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
-                        System.gc();
+                        gcCounter.increment();
+                        if (gcCounter.intValue() % 1000 == 0) {
+                            LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
+                            System.gc();
+                        }
+                    } catch (NameException e) {
+                        LOGGER.error("Error when checking syllable counts.", e);
                     }
-                }
+                });
                 LOGGER.info("Syllable update done");
                 System.gc();
             } catch (NameException e) {
