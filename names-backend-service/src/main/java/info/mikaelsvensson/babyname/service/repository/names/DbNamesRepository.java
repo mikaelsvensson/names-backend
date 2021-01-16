@@ -3,6 +3,8 @@ package info.mikaelsvensson.babyname.service.repository.names;
 import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import info.mikaelsvensson.babyname.service.util.NameFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
@@ -20,6 +22,8 @@ import java.util.function.Consumer;
 @Repository
 @Service
 public class DbNamesRepository implements NamesRepository {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DbNamesRepository.class);
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
@@ -51,18 +55,21 @@ public class DbNamesRepository implements NamesRepository {
     }
 
     @Override
-    public Map<String, String> allNames() throws NameException {
+    public synchronized Map<String, String> allNames() throws NameException {
         if (cacheAllNames == null) {
             cacheAllNames = new HashMap<>();
             all(null, null, 0, Integer.MAX_VALUE, null, null, null, name -> {
                 cacheAllNames.put(name.getId(), name.getName());
             });
+            LOGGER.info("allNames: Cached {} names.", cacheAllNames.size());
+        } else {
+            LOGGER.info("allNames: Returned {} names.", cacheAllNames.size());
         }
         return cacheAllNames;
     }
 
     @Override
-    public Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException {
+    public synchronized Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException {
         try {
             final var obj = new Name(
                     name,

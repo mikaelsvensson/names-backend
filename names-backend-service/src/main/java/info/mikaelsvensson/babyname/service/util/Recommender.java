@@ -1,11 +1,16 @@
 package info.mikaelsvensson.babyname.service.util;
 
-import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.AttributeKey;
+import info.mikaelsvensson.babyname.service.model.AttributeNumeric;
+import info.mikaelsvensson.babyname.service.model.Name;
+import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.repository.names.*;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +20,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class Recommender {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Recommender.class);
 
     final private NamesRepository namesRepository;
     final private VotesRepository votesRepository;
@@ -125,6 +132,8 @@ public class Recommender {
         final var votes = this.votesRepository.all(user);
 
         final var allNames = namesRepository.allNames();
+
+        LOGGER.info("Got {} names and {} votes.", allNames.size(), votes.size());
 
         final var counts = new HashMap<String, Integer>();
         final var voteByName = votes.stream()
