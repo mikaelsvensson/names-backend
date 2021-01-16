@@ -205,24 +205,31 @@ public class NamesController {
     public List<ExtendedName> getSimilar(Authentication authentication, @PathVariable("nameId") String nameId) {
         try {
             final var refName = namesRepository.get(nameId);
-            final var otherNames = new ArrayList<Name>();
-            namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null, name -> {
-                if (!name.getId().equals(refName.getId())) {
-                    otherNames.add(name);
-                }
-            });
+            final var otherNames = namesRepository.allNames();
+            otherNames.remove(refName.getId());
 
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
             final var partnerUsers = user != null ? relationshipsRepository.getRelatedUsers(user) : Collections.<User>emptyList();
-            return enrichWithVotes(similarityCalculator.get(refName, otherNames)
-                            .entrySet()
-                            .stream()
-                            .sorted((o1, o2) ->
-                                    o2.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum() -
-                                            o1.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum())
-                            .map(Map.Entry::getKey)
-                            .collect(Collectors.toList()),
+            final Collection<Name> similarNames = similarityCalculator.get(refName.getName(), otherNames)
+                    .entrySet()
+                    .stream()
+                    .sorted((o1, o2) ->
+                            o2.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum() -
+                                    o1.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum())
+                    .map(Map.Entry::getKey)
+                    .map(id -> {
+                        try {
+                            return namesRepository.get(id);
+                        } catch (NameException e) {
+                            LOGGER.warn("Could read name", e);
+                            e.printStackTrace();
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            return enrichWithVotes(similarNames,
                     user,
                     partnerUsers);
         } catch (NameException | UserException | RelationshipException | VoteException e) {

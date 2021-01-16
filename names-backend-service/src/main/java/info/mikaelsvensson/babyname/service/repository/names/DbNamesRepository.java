@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +22,8 @@ import java.util.function.Consumer;
 public class DbNamesRepository implements NamesRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    private Map<String, String> cacheAllNames;
 
     public DbNamesRepository(@Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
@@ -47,6 +48,17 @@ public class DbNamesRepository implements NamesRepository {
                 offset,
                 limit,
                 nameConsumer);
+    }
+
+    @Override
+    public Map<String, String> allNames() throws NameException {
+        if (cacheAllNames == null) {
+            cacheAllNames = new HashMap<>();
+            all(null, null, 0, Integer.MAX_VALUE, null, null, null, name -> {
+                cacheAllNames.put(name.getId(), name.getName());
+            });
+        }
+        return cacheAllNames;
     }
 
     @Override
@@ -78,6 +90,7 @@ public class DbNamesRepository implements NamesRepository {
             }
 
             setNumericAttribute(obj, user, AttributeKey.SYLLABLE_COUNT, (double) NameFeature.syllableCount(name));
+            cacheAllNames = null;
             return obj;
         } catch (DataAccessException e) {
             throw new NameException(e.getMessage());

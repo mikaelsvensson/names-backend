@@ -6,7 +6,7 @@ import info.mikaelsvensson.babyname.service.model.Name;
 import info.mikaelsvensson.babyname.service.model.User;
 import org.springframework.stereotype.Repository;
 
-import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -14,6 +14,8 @@ import java.util.function.Consumer;
 @Repository
 public interface NamesRepository {
     void all(Set<String> userIds, String namePrefix, int offset, int limit, Set<String> voteUserIds, Set<FilterAttributeNumeric> numericFilters, Set<FilterVote> filterVotes, Consumer<Name> nameConsumer) throws NameException;
+
+    Map<String, String> allNames() throws NameException;
 
     Name add(String name, User user, Set<Attribute<?>> attributes) throws NameException;
 

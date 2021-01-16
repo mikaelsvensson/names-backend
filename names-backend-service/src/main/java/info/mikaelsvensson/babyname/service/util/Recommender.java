@@ -1,9 +1,6 @@
 package info.mikaelsvensson.babyname.service.util;
 
-import info.mikaelsvensson.babyname.service.model.AttributeKey;
-import info.mikaelsvensson.babyname.service.model.AttributeNumeric;
-import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.model.User;
+import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.names.*;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
@@ -14,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -62,7 +58,7 @@ public class Recommender {
             final var namesToRecommend = new TreeSet<>(Comparator.comparingDouble(NameScore::getScore).reversed());
 
             getNamesToScore(user, numericFilters, name -> {
-                final var score = this.getScore(name, ngramScores);
+                final var score = this.getScore(name.getName(), ngramScores);
 
                 final var nameScore = new NameScore(name, score);
                 if (namesToRecommend.size() < 100) {
@@ -118,31 +114,22 @@ public class Recommender {
         return userIds;
     }
 
-    private Double getScore(Name name, Map<String, Integer> stats) {
-        return ngrams(name.getName())
+    private Double getScore(String name, Map<String, Integer> stats) {
+        return ngrams(name)
                 .stream()
                 .mapToDouble(value -> stats.getOrDefault(value, 0))
                 .sum();
     }
 
-    private Map<String, Integer> getNgramScores(User user) throws VoteException, RelationshipException, NameException {
+    private Map<String, Integer> getNgramScores(User user) throws VoteException, NameException {
         final var votes = this.votesRepository.all(user);
 
-        final var namesWithVotes = new HashMap<String, Name>();
-        namesRepository.all(
-                getNameOwnerUserIds(user),
-                null,
-                0,
-                Integer.MAX_VALUE,
-                null,
-                null,
-                Collections.singleton(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.ANY_VOTE)),
-                name -> namesWithVotes.put(name.getId(), name));
+        final var allNames = namesRepository.allNames();
 
         final var counts = new HashMap<String, Integer>();
         final var voteByName = votes.stream()
-                .map(vote -> Map.entry(namesWithVotes.get(vote.getNameId()).getName(), vote.getValue()))
-                .filter(entry -> entry.getValue() != 0)
+                .filter(vote -> vote.getValue() != 0)
+                .map(vote -> Map.entry(allNames.get(vote.getNameId()), vote.getValue()))
                 .collect(Collectors.toList());
 
         final var voteSumMax = voteByName.size() * 100;
