@@ -21,17 +21,27 @@ public class DbRelationshipsRepository implements RelationshipsRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DbRelationshipsRepository.class);
 
-    @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    @Autowired
-    private Metrics metrics;
+    private final Metrics metrics;
+
+    public DbRelationshipsRepository(@Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+                                     @Autowired Metrics metrics) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+        this.metrics = metrics;
+    }
 
     @Override
-    public void add(User user, User relatedUser) throws RelationshipException {
+    public void connect(User user, User relatedUser) throws RelationshipException {
         try {
             namedParameterJdbcTemplate.update(
-                    "INSERT INTO relationships (user_id, related_user_id) VALUES (:userId, :relatedUserId)",
+                    "DELETE FROM relationships WHERE user_id IN (:userId, :relatedUserId) OR related_user_id IN (:userId, :relatedUserId)",
+                    Map.of(
+                            "userId", user.getId(),
+                            "relatedUserId", relatedUser.getId()
+                    ));
+            namedParameterJdbcTemplate.update(
+                    "INSERT INTO relationships (user_id, related_user_id) VALUES (:userId, :relatedUserId), (:relatedUserId, :userId)",
                     Map.of(
                             "userId", user.getId(),
                             "relatedUserId", relatedUser.getId()
@@ -42,19 +52,5 @@ public class DbRelationshipsRepository implements RelationshipsRepository {
             throw new RelationshipException(e.getMessage());
         }
 
-    }
-
-    @Override
-    public List<User> getRelatedUsers(User user) throws RelationshipException {
-        try {
-            return namedParameterJdbcTemplate.query(
-                    "SELECT u.* FROM relationships AS r INNER JOIN users AS u ON r.related_user_id = u.id AND r.user_id = :id",
-                    Map.of(
-                            "id", user.getId()
-                    ),
-                    DbUserRepository::mapper);
-        } catch (DataAccessException e) {
-            throw new RelationshipException(e.getMessage());
-        }
     }
 }

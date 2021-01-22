@@ -5,8 +5,8 @@ import info.mikaelsvensson.babyname.service.model.AttributeNumeric;
 import info.mikaelsvensson.babyname.service.model.Name;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.repository.names.*;
-import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
-import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
+import info.mikaelsvensson.babyname.service.repository.users.UserException;
+import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
 import org.slf4j.Logger;
@@ -25,20 +25,20 @@ public class Recommender {
 
     final private NamesRepository namesRepository;
     final private VotesRepository votesRepository;
-    final private RelationshipsRepository relationshipsRepository;
+    final private UserRepository userRepository;
     final private ScbNameImporter scbNameImporter;
     final private SyllableUpdater syllableUpdater;
     final private boolean isUnigramConsidered;
 
     public Recommender(NamesRepository namesRepository,
                        VotesRepository votesRepository,
-                       RelationshipsRepository relationshipsRepository,
+                       UserRepository userRepository,
                        ScbNameImporter scbNameImporter,
                        SyllableUpdater syllableUpdater,
                        @Value("${recommender.unigramConsidered}") boolean isUnigramConsidered) {
         this.namesRepository = namesRepository;
         this.votesRepository = votesRepository;
-        this.relationshipsRepository = relationshipsRepository;
+        this.userRepository = userRepository;
         this.scbNameImporter = scbNameImporter;
         this.syllableUpdater = syllableUpdater;
         this.isUnigramConsidered = isUnigramConsidered;
@@ -92,14 +92,14 @@ public class Recommender {
                         return nameScore.name;
                     })
                     .collect(Collectors.toList());
-        } catch (VoteException | RelationshipException | NameException e) {
+        } catch (VoteException | UserException | NameException e) {
             throw new RecommenderException(e);
         } catch (NoSuchElementException e) {
             return Collections.emptyList();
         }
     }
 
-    private void getNamesToScore(User user, Set<FilterAttributeNumeric> numericFilters, Consumer<Name> nameConsumer) throws RelationshipException, NameException {
+    private void getNamesToScore(User user, Set<FilterAttributeNumeric> numericFilters, Consumer<Name> nameConsumer) throws NameException, UserException {
         namesRepository.all(
                 getNameOwnerUserIds(user),
                 null,
@@ -111,13 +111,15 @@ public class Recommender {
                 nameConsumer);
     }
 
-    private HashSet<String> getNameOwnerUserIds(User user) throws RelationshipException {
+    private HashSet<String> getNameOwnerUserIds(User user) throws UserException {
         final var userIds = new HashSet<String>();
         userIds.add(scbNameImporter.getUser().getId());
         userIds.add(syllableUpdater.getUser().getId());
 
         userIds.add(user.getId());
-        userIds.addAll(relationshipsRepository.getRelatedUsers(user).stream().map(User::getId).collect(Collectors.toSet()));
+        if (user.getRelatedUserId() != null) {
+            userIds.add(userRepository.get(user.getRelatedUserId()).getId());
+        }
         return userIds;
     }
 

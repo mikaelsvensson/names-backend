@@ -65,7 +65,7 @@ public class DbUserRepository implements UserRepository {
     @Override
     public User addFromProvider(UserProvider provider, String providerValue) throws UserException {
         try {
-            final var user = new User(IdUtils.random(), provider, providerValue, Instant.now());
+            final var user = new User(IdUtils.random(), provider, providerValue, null, Instant.now());
             namedParameterJdbcTemplate.update(
                     "INSERT INTO users (id, system_name, created_at) VALUES (:id, :systemName, :createdAt)",
                     Map.of(
@@ -87,7 +87,7 @@ public class DbUserRepository implements UserRepository {
     public User get(String userId) throws UserException {
         try {
             return namedParameterJdbcTemplate.queryForObject(
-                    "SELECT * FROM users WHERE id = :id",
+                    "SELECT u.*, r.related_user_id FROM users AS u LEFT JOIN relationships AS r ON u.id = r.user_id WHERE u.id = :id",
                     Map.of(
                             "id", userId
                     ),
@@ -101,7 +101,7 @@ public class DbUserRepository implements UserRepository {
     public User getByProvider(UserProvider provider, String providerValue) throws UserException {
         try {
             return namedParameterJdbcTemplate.queryForObject(
-                    "SELECT * FROM users WHERE system_name = :systemName",
+                    "SELECT u.*, r.related_user_id FROM users AS u LEFT JOIN relationships AS r ON u.id = r.user_id WHERE u.system_name = :systemName",
                     Map.of(
                             "systemName",
                             provider == UserProvider.INTERNAL
@@ -129,6 +129,7 @@ public class DbUserRepository implements UserRepository {
                 key,
                 value,
                 // About storing dates as instants: https://engineering.q42.nl/why-always-use-utc-is-bad-advice/
+                resultSet.getString("related_user_id"),
                 Instant.ofEpochMilli(resultSet.getLong("created_at")));
     }
 }

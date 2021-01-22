@@ -71,35 +71,37 @@ public class NamesController {
             final var voteFilters = new HashSet<FilterVote>();
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
-            final var partnerUsers = user != null ? relationshipsRepository.getRelatedUsers(user) : Collections.<User>emptyList();
+            final var partnerUser = user != null && user.getRelatedUserId() != null ? userRepository.get(user.getRelatedUserId()) : null;
             if (user != null) {
                 userIds.add(user.getId());
-                final var partnerUserIds = partnerUsers.stream().map(User::getId).collect(Collectors.toSet());
-                userIds.addAll(partnerUserIds);
+                if (partnerUser != null) {
+                    userIds.add(partnerUser.getId());
+                }
 
                 if (votesFilter != null) {
                     switch (votesFilter) {
                         case MY_VOTES -> voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.ANY_VOTE));
                         case MY_FAVOURITES -> voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.POSITIVE_VOTE));
                         case ALL_OUR_VOTES -> {
-                            var userAndPartnerIds = new HashSet<String>();
-                            userAndPartnerIds.add(userId);
-                            userAndPartnerIds.addAll(partnerUserIds);
-                            voteFilters.add(new FilterVote(userAndPartnerIds, FilterVoteCondition.ANY_VOTE));
+                            voteFilters.add(new FilterVote(
+                                    partnerUser != null
+                                            ? Set.of(userId, partnerUser.getId())
+                                            : Set.of(userId),
+                                    FilterVoteCondition.ANY_VOTE));
                         }
                         case NEW_PARTNER_VOTES -> {
-                            if (partnerUserIds.isEmpty()) {
+                            if (partnerUser == null) {
                                 return new SearchResult(Collections.emptyList(), true); // No partner, no results.
                             }
                             voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.NOT_YET_VOTED));
-                            voteFilters.add(new FilterVote(partnerUserIds, FilterVoteCondition.ANY_VOTE));
+                            voteFilters.add(new FilterVote(Collections.singleton(partnerUser.getId()), FilterVoteCondition.ANY_VOTE));
                         }
                         case SHARED_FAVOURITES -> {
-                            if (partnerUserIds.isEmpty()) {
+                            if (partnerUser == null) {
                                 return new SearchResult(Collections.emptyList(), true); // No partner, no results.
                             }
                             voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.POSITIVE_VOTE));
-                            voteFilters.add(new FilterVote(partnerUserIds, FilterVoteCondition.POSITIVE_VOTE));
+                            voteFilters.add(new FilterVote(Collections.singleton(partnerUser.getId()), FilterVoteCondition.POSITIVE_VOTE));
                         }
                     }
                 }
@@ -128,18 +130,18 @@ public class NamesController {
             final var isLast = names.size() < limit + 1;
             final var returnedNames = isLast ? names : names.subList(0, limit);
             return new SearchResult(
-                    enrichWithVotes(returnedNames, user, partnerUsers),
+                    enrichWithVotes(returnedNames, user, partnerUser),
                     isLast);
-        } catch (NameException | UserException | RelationshipException | VoteException e) {
+        } catch (NameException | UserException | VoteException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
-    private List<ExtendedName> enrichWithVotes(Collection<Name> returnedNames, User user, Collection<User> partnerUsers) throws VoteException {
+    private List<ExtendedName> enrichWithVotes(Collection<Name> returnedNames, User user, User partnerUser) throws VoteException {
         final var userVotes = user != null ? votesRepository.all(user) : Collections.<Vote>emptyList();
         final var partnerVotes = new ArrayList<Vote>();
-        for (User partnerUser : partnerUsers) {
+        if (partnerUser != null) {
             partnerVotes.addAll(votesRepository.all(partnerUser));
         }
 
@@ -190,12 +192,12 @@ public class NamesController {
         try {
             var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
-            final var partnerUsers = user != null ? relationshipsRepository.getRelatedUsers(user) : Collections.<User>emptyList();
+            final var partnerUser = user != null && user.getRelatedUserId() != null ? userRepository.get(user.getRelatedUserId()) : null;
             return enrichWithVotes(
                     Collections.singleton(namesRepository.get(nameId)),
                     user,
-                    partnerUsers).get(0);
-        } catch (NameException | UserException | VoteException | RelationshipException e) {
+                    partnerUser).get(0);
+        } catch (NameException | UserException | VoteException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -210,7 +212,7 @@ public class NamesController {
 
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
-            final var partnerUsers = user != null ? relationshipsRepository.getRelatedUsers(user) : Collections.<User>emptyList();
+            final var partnerUser = user != null && user.getRelatedUserId() != null ? userRepository.get(user.getRelatedUserId()) : null;
             final Collection<Name> similarNames = similarityCalculator.get(refName.getName(), otherNames)
                     .entrySet()
                     .stream()
@@ -231,8 +233,8 @@ public class NamesController {
                     .collect(Collectors.toList());
             return enrichWithVotes(similarNames,
                     user,
-                    partnerUsers);
-        } catch (NameException | UserException | RelationshipException | VoteException e) {
+                    partnerUser);
+        } catch (NameException | UserException | VoteException e) {
             LOGGER.warn("Could get similar names", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }

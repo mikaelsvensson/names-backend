@@ -1,5 +1,6 @@
 package info.mikaelsvensson.babyname.service.repository.names;
 
+import info.mikaelsvensson.babyname.service.TestUtil;
 import info.mikaelsvensson.babyname.service.model.*;
 import info.mikaelsvensson.babyname.service.repository.users.DbUserRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
@@ -32,15 +33,7 @@ class DbNamesRepositoryTest {
 
     @BeforeAll
     static void beforeAll() throws LiquibaseException, UserException, SQLException {
-        DataSource dataSource = new EmbeddedDatabaseBuilder()
-                .setType(EmbeddedDatabaseType.H2)
-                .setName("unit-test;MODE=PostgreSQL")
-                .build();
-
-        Liquibase liquibase = new Liquibase("db/changelog/db.changelog-master.yaml", new ClassLoaderResourceAccessor(), new JdbcConnection(dataSource.getConnection()));
-        liquibase.update("");
-
-        jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+        jdbcTemplate = TestUtil.createJdbcTemplate();
 
         final var userRepository = new DbUserRepository(jdbcTemplate, mock(Metrics.class));
 

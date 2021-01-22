@@ -6,16 +6,18 @@ public class User {
     private final String id;
     private final UserProvider providerKey;
     private final String providerUserId;
+    private final String relatedUserId;
     private final Instant createdAt;
 
     public User(String id, Instant createdAt) {
-        this(id, UserProvider.ANONYMOUS, null, createdAt);
+        this(id, UserProvider.ANONYMOUS, null, null, createdAt);
     }
 
-    public User(String id, UserProvider providerKey, String providerUserId, Instant createdAt) {
+    public User(String id, UserProvider providerKey, String providerUserId, String relatedUserId, Instant createdAt) {
         this.id = id;
         this.providerKey = providerKey;
         this.providerUserId = providerUserId;
+        this.relatedUserId = relatedUserId;
         this.createdAt = createdAt;
     }
 
@@ -33,5 +35,9 @@ public class User {
 
     public UserProvider getProviderKey() {
         return providerKey;
+    }
+
+    public String getRelatedUserId() {
+        return relatedUserId;
     }
 }

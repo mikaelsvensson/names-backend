@@ -123,12 +123,9 @@ public class ActionsController {
         if (sourceUserId.equals(userId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot link to yourself.");
         }
-        relationshipsRepository.add(
+        relationshipsRepository.connect(
                 userRepository.get(sourceUserId),
                 userRepository.get(userId));
-        relationshipsRepository.add(
-                userRepository.get(userId),
-                userRepository.get(sourceUserId));
         actionsRepository.setStatus(action, ActionStatus.DONE);
         return actionsRepository.get(action.getId());
     }

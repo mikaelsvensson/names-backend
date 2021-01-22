@@ -26,7 +26,7 @@ import java.util.stream.IntStream;
 @RestController
 @RequestMapping("votes")
 public class VotesController {
-    private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(VotesController.class);
     @Autowired
     private UserRepository userRepository;
 
