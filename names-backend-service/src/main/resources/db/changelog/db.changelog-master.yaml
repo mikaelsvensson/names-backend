@@ -246,3 +246,66 @@ databaseChangeLog:
                   type: bigint
                   constraints:
                     nullable: false
+  #
+  # Change set 5: Add table for SCB data
+  #
+  - changeSet:
+      id: 005_scb_data
+      author: mikael.svensson
+      changes:
+        - createTable:
+            tableName: names_scb
+            columns:
+              - column:
+                  name: name_id
+                  type: varchar(36)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    foreignKeyName: fk_namesscb_nameid
+                    references: names(id)
+                    deleteCascade: true
+              - column:
+                  name: percent_of_population
+                  type: float
+                  constraints:
+                    nullable: true
+              - column:
+                  name: percent_women
+                  type: float
+                  constraints:
+                    nullable: true
+  #
+  # Change set 6: Add table for derived metadata for names
+  #
+  - changeSet:
+      id: 006_metrics_data
+      author: mikael.svensson
+      changes:
+        - createTable:
+            tableName: names_metrics
+            columns:
+              - column:
+                  name: name_id
+                  type: varchar(36)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    foreignKeyName: fk_namesmetrics_nameid
+                    references: names(id)
+                    deleteCascade: true
+              - column:
+                  name: syllable_count
+                  type: integer
+                  constraints:
+                    nullable: true
+
+  #
+  # Change set 7:
+  #
+  - changeSet:
+      id: 007_drop_float_attributes
+      author: mikael.svensson
+      changes:
+        - dropTable:
+            tableName: name_attributes_float

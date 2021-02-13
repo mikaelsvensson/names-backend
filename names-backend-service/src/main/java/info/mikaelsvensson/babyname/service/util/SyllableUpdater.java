@@ -1,12 +1,14 @@
 package info.mikaelsvensson.babyname.service.util;
 
-import info.mikaelsvensson.babyname.service.model.AttributeKey;
-import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.model.User;
-import info.mikaelsvensson.babyname.service.model.UserProvider;
+import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.name.MetricsProperties;
+import info.mikaelsvensson.babyname.service.model.name.Name;
+import info.mikaelsvensson.babyname.service.repository.names.NameAddedEvent;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
-import info.mikaelsvensson.babyname.service.repository.users.UserException;
+import info.mikaelsvensson.babyname.service.repository.names.request.BasicNameFacet;
+import info.mikaelsvensson.babyname.service.repository.names.request.MetricsNameFacet;
+import info.mikaelsvensson.babyname.service.repository.names.request.NamesRequest;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.slf4j.Logger;
@@ -16,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +36,9 @@ public class SyllableUpdater {
 
     @Value("${syllableUpdater.onStart:true}")
     private boolean onStart;
+
+    @Autowired
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Autowired
     private NamesRepository namesRepository;
@@ -58,21 +64,15 @@ public class SyllableUpdater {
 
             LOGGER.info("Syllable update started");
             try {
-                namesRepository.all(null, null, 0, Integer.MAX_VALUE, null, null, null, name -> {
-                    try {
-                        final var expectedSyllableCount = Double.valueOf(NameFeature.syllableCount(name.getName()));
-                        final var attribute = name.getAttribute(AttributeKey.SYLLABLE_COUNT);
-                        if (attribute.isEmpty() || !expectedSyllableCount.equals(attribute.get().getValue())) {
-                            namesRepository.setNumericAttribute(name, getUser(), AttributeKey.SYLLABLE_COUNT, expectedSyllableCount);
-                        }
+                namesRepository.all(new NamesRequest().basic(new BasicNameFacet()).metrics(new MetricsNameFacet()), name -> {
+                    if (name.getMetrics() == null || name.getMetrics().getSyllableCount() == null) {
+                        addMetrics(name);
+                    }
 
-                        gcCounter.increment();
-                        if (gcCounter.intValue() % 1000 == 0) {
-                            LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
-                            System.gc();
-                        }
-                    } catch (NameException e) {
-                        LOGGER.error("Error when checking syllable counts.", e);
+                    gcCounter.increment();
+                    if (gcCounter.intValue() % 1000 == 0) {
+                        LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
+                        System.gc();
                     }
                 });
                 LOGGER.info("Syllable update done");
@@ -85,18 +85,17 @@ public class SyllableUpdater {
         }, Instant.now().plusSeconds(1));
     }
 
-    public User getUser() {
-        if (user == null) {
-            try {
-                user = userRepository.getByProvider(UserProvider.INTERNAL, SYSTEM_NAME);
-            } catch (UserException e) {
-                try {
-                    user = userRepository.addFromProvider(UserProvider.INTERNAL, SYSTEM_NAME);
-                } catch (UserException userException) {
-                    throw new RuntimeException(userException);
-                }
-            }
+    @EventListener
+    public void onNameAdded(NameAddedEvent event) {
+        addMetrics(event.getName());
+    }
+
+    private void addMetrics(Name name) {
+        try {
+            final var syllableCount = NameFeature.syllableCount(name.getName());
+            namesRepository.setMetricsProperties(name, new MetricsProperties((double) syllableCount));
+        } catch (NameException e) {
+            LOGGER.error("Could not update syllable count for name.", e);
         }
-        return user;
     }
 }

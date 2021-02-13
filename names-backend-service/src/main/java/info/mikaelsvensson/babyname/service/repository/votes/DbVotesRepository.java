@@ -1,6 +1,6 @@
 package info.mikaelsvensson.babyname.service.repository.votes;
 
-import info.mikaelsvensson.babyname.service.model.Name;
+import info.mikaelsvensson.babyname.service.model.name.Name;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.Vote;
 import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;

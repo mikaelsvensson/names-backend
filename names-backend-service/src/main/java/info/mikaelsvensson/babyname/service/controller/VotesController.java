@@ -53,7 +53,7 @@ public class VotesController {
         var userId = authentication.getName();
         try {
             final var user = userRepository.get(userId);
-            votesRepository.set(user, namesRepository.get(nameId), vote.getValue());
+            votesRepository.set(user, namesRepository.get(nameId, user), vote.getValue());
         } catch (UserException | NameException | VoteException e) {
             LOGGER.warn("Could not cast vote", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
