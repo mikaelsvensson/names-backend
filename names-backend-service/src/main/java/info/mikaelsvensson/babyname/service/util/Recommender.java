@@ -1,10 +1,12 @@
 package info.mikaelsvensson.babyname.service.util;
 
-import info.mikaelsvensson.babyname.service.model.AttributeKey;
-import info.mikaelsvensson.babyname.service.model.AttributeNumeric;
-import info.mikaelsvensson.babyname.service.model.Name;
-import info.mikaelsvensson.babyname.service.model.User;
+import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.name.Name;
+import info.mikaelsvensson.babyname.service.model.name.RecommendationProperties;
 import info.mikaelsvensson.babyname.service.repository.names.*;
+import info.mikaelsvensson.babyname.service.repository.names.request.BasicNameFacet;
+import info.mikaelsvensson.babyname.service.repository.names.request.NamesRequest;
+import info.mikaelsvensson.babyname.service.repository.names.request.VotesNameFacet;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
@@ -58,13 +60,13 @@ public class Recommender {
         }
     }
 
-    public List<Name> getRecommendation(User user, Set<FilterAttributeNumeric> numericFilters) throws RecommenderException {
+    public List<Name> getRecommendation(User user, NamesRequest baseRequest) throws RecommenderException {
         try {
             final var ngramScores = this.getNgramScores(user);
 
             final var namesToRecommend = new TreeSet<>(Comparator.comparingDouble(NameScore::getScore).reversed());
 
-            getNamesToScore(user, numericFilters, name -> {
+            getNamesToScore(user, baseRequest, name -> {
                 final var score = this.getScore(name.getName(), ngramScores);
 
                 final var nameScore = new NameScore(name, score);
@@ -86,9 +88,7 @@ public class Recommender {
                     .stream()
                     .map(nameScore -> {
                         final var normalizedNgramScore = (nameScore.score - ngramScoreMin) / (ngramScoreMax - ngramScoreMin);
-                        nameScore.name.addAttribute(new AttributeNumeric(
-                                AttributeKey.RECOMMENDATION_VALUE,
-                                normalizedNgramScore));
+                        nameScore.name.setRecommendation(new RecommendationProperties(normalizedNgramScore));
                         return nameScore.name;
                     })
                     .collect(Collectors.toList());
@@ -99,22 +99,29 @@ public class Recommender {
         }
     }
 
-    private void getNamesToScore(User user, Set<FilterAttributeNumeric> numericFilters, Consumer<Name> nameConsumer) throws NameException, UserException {
-        namesRepository.all(
-                getNameOwnerUserIds(user),
-                null,
-                0,
-                Integer.MAX_VALUE,
-                null,
-                numericFilters,
-                Collections.singleton(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.NOT_YET_VOTED)),
-                nameConsumer);
+    private void getNamesToScore(User user, NamesRequest baseRequest, Consumer<Name> nameConsumer) throws NameException, UserException {
+        final var request = new NamesRequest()
+                .basic(new BasicNameFacet()
+                        .nameOwnerUserIds(getNameOwnerUserIds(user)))
+                .votes(new VotesNameFacet()
+                        .selfUserId(user.getId())
+                        .partnerUserId(user.getRelatedUserId())
+                        .filterVotes(Collections.singleton(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.NOT_YET_VOTED))))
+                .limit(Integer.MAX_VALUE)
+                .offset(0);
+
+        if (baseRequest.scb != null) {
+            request.scb(baseRequest.scb);
+        }
+        if (baseRequest.metrics != null) {
+            request.metrics(baseRequest.metrics);
+        }
+        namesRepository.all(request, nameConsumer);
     }
 
     private HashSet<String> getNameOwnerUserIds(User user) throws UserException {
         final var userIds = new HashSet<String>();
         userIds.add(scbNameImporter.getUser().getId());
-        userIds.add(syllableUpdater.getUser().getId());
 
         userIds.add(user.getId());
         if (user.getRelatedUserId() != null) {

@@ -1,8 +1,9 @@
 package info.mikaelsvensson.babyname.service.controller;
 
 import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.name.Name;
 import info.mikaelsvensson.babyname.service.repository.names.*;
-import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
+import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
@@ -64,105 +65,111 @@ public class NamesController {
             @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
     ) {
         try {
+            final var request = new NamesRequest()
+                    .basic(new BasicNameFacet())
+                    .offset(offset)
+                    .limit(limit + 1);
+
             final var userIds = new HashSet<String>();
             userIds.add(scbNameImporter.getUser().getId());
-            userIds.add(syllableUpdater.getUser().getId());
 
-            final var voteFilters = new HashSet<FilterVote>();
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
-            final var partnerUser = user != null && user.getRelatedUserId() != null ? userRepository.get(user.getRelatedUserId()) : null;
+            final var partnerUserId = user != null ? user.getRelatedUserId() : null;
             if (user != null) {
                 userIds.add(user.getId());
-                if (partnerUser != null) {
-                    userIds.add(partnerUser.getId());
+                if (partnerUserId != null) {
+                    userIds.add(partnerUserId);
                 }
-
+                final var votesNameFacet = new VotesNameFacet()
+                        .selfUserId(user.getId())
+                        .partnerUserId(partnerUserId);
                 if (votesFilter != null) {
+                    final var voteFilters = new HashSet<FilterVote>();
                     switch (votesFilter) {
                         case MY_VOTES -> voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.ANY_VOTE));
                         case MY_FAVOURITES -> voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.POSITIVE_VOTE));
                         case ALL_OUR_VOTES -> {
                             voteFilters.add(new FilterVote(
-                                    partnerUser != null
-                                            ? Set.of(userId, partnerUser.getId())
+                                    partnerUserId != null
+                                            ? Set.of(userId, partnerUserId)
                                             : Set.of(userId),
                                     FilterVoteCondition.ANY_VOTE));
                         }
                         case NEW_PARTNER_VOTES -> {
-                            if (partnerUser == null) {
+                            if (partnerUserId == null) {
                                 return new SearchResult(Collections.emptyList(), true); // No partner, no results.
                             }
                             voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.NOT_YET_VOTED));
-                            voteFilters.add(new FilterVote(Collections.singleton(partnerUser.getId()), FilterVoteCondition.ANY_VOTE));
+                            voteFilters.add(new FilterVote(Collections.singleton(partnerUserId), FilterVoteCondition.ANY_VOTE));
                         }
                         case SHARED_FAVOURITES -> {
-                            if (partnerUser == null) {
+                            if (partnerUserId == null) {
                                 return new SearchResult(Collections.emptyList(), true); // No partner, no results.
                             }
                             voteFilters.add(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.POSITIVE_VOTE));
-                            voteFilters.add(new FilterVote(Collections.singleton(partnerUser.getId()), FilterVoteCondition.POSITIVE_VOTE));
+                            voteFilters.add(new FilterVote(Collections.singleton(partnerUserId), FilterVoteCondition.POSITIVE_VOTE));
                         }
                     }
+                    votesNameFacet.filterVotes(voteFilters);
                 }
+                request.votes(votesNameFacet);
             }
 
-            final var numericFilters = Optional.ofNullable(attributeFilterSpecs).orElse(Collections.emptySet()).stream()
-                    .map(attributeFilterSpec -> attributeFilterSpec.split(":"))
-                    .filter(specFields -> specFields.length == 3)
-                    .map(specFields -> new FilterAttributeNumeric(
-                            AttributeKey.valueOf(specFields[0]),
-                            NumericOperator.valueOf(specFields[1]),
-                            Double.parseDouble(specFields[2])
-                    ))
-                    .collect(Collectors.toSet());
+            request.basic(new BasicNameFacet()
+                    .nameOwnerUserIds(userIds)
+                    .namePrefix(namePrefix));
+
+
+            if (attributeFilterSpecs != null) {
+                initRequestAttributeFilters(request, attributeFilterSpecs);
+            }
+
+            if (request.scb == null) {
+                request.scb(new ScbNameFacet());
+            }
 
             final var names = new ArrayList<Name>();
             namesRepository.all(
-                    userIds,
-                    namePrefix,
-                    offset,
-                    limit + 1,
-                    null,
-                    numericFilters,
-                    voteFilters,
+                    request,
                     names::add);
             final var isLast = names.size() < limit + 1;
             final var returnedNames = isLast ? names : names.subList(0, limit);
             return new SearchResult(
-                    enrichWithVotes(returnedNames, user, partnerUser),
+                    returnedNames,
                     isLast);
-        } catch (NameException | UserException | VoteException e) {
+        } catch (NameException | UserException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
-    private List<ExtendedName> enrichWithVotes(Collection<Name> returnedNames, User user, User partnerUser) throws VoteException {
-        final var userVotes = user != null ? votesRepository.all(user) : Collections.<Vote>emptyList();
-        final var partnerVotes = new ArrayList<Vote>();
-        if (partnerUser != null) {
-            partnerVotes.addAll(votesRepository.all(partnerUser));
-        }
-
-        return returnedNames
-                .stream()
-                .map(name -> new ExtendedName(
-                        name.getName(),
-                        name.getId(),
-                        name.getAttributes(),
-                        userVotes.stream()
-                                .filter(vote -> vote.getNameId().equals(name.getId()))
-                                .findFirst()
-                                .map(Vote::getValue)
-                                .orElse(null),
-                        partnerVotes.stream()
-                                .filter(vote -> vote.getNameId().equals(name.getId()))
-                                .findFirst()
-                                .map(Vote::getValue)
-                                .orElse(null)
-                ))
-                .collect(Collectors.toList());
+    private void initRequestAttributeFilters(NamesRequest request, Set<String> attributeFilterSpecs) {
+        final var scbFacet = new ScbNameFacet();
+        final var metricsFacet = new MetricsNameFacet();
+        attributeFilterSpecs.stream()
+                .map(attributeFilterSpec -> attributeFilterSpec.split(":"))
+                .filter(specFields -> specFields.length == 3)
+                .forEach(specFields -> {
+                    final var filter = new FilterAttributeNumeric(
+                            NumericOperator.valueOf(specFields[1]),
+                            Double.parseDouble(specFields[2])
+                    );
+                    switch (AttributeKey.valueOf(specFields[0])) {
+                        case SYLLABLE_COUNT:
+                            metricsFacet.syllableFilter(filter);
+                            request.metrics(metricsFacet);
+                            break;
+                        case SCB_PERCENT_WOMEN:
+                            scbFacet.percentWomenFilter(filter);
+                            request.scb(scbFacet);
+                            break;
+                        case SCB_PERCENT_OF_POPULATION:
+                            scbFacet.percentOfPopulationFilter(filter);
+                            request.scb(scbFacet);
+                            break;
+                    }
+                });
     }
 
     @PostMapping
@@ -175,7 +182,7 @@ public class NamesController {
 
         try {
             final var user = userRepository.get(userId);
-            final var name = namesRepository.add(nameBase.getName(), user, Collections.emptySet());
+            final var name = namesRepository.add(nameBase.getName(), user);
             votesRepository.set(user, name, Vote.VALUE_UP);
             return name;
         } catch (UserException | NameException | VoteException e) {
@@ -185,35 +192,29 @@ public class NamesController {
     }
 
     @GetMapping("{nameId}")
-    public ExtendedName get(
+    public Name get(
             Authentication authentication,
             @PathVariable(name = "nameId", required = false) String nameId
     ) {
         try {
             var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
-            final var partnerUser = user != null && user.getRelatedUserId() != null ? userRepository.get(user.getRelatedUserId()) : null;
-            return enrichWithVotes(
-                    Collections.singleton(namesRepository.get(nameId)),
-                    user,
-                    partnerUser).get(0);
-        } catch (NameException | UserException | VoteException e) {
+            return namesRepository.get(nameId, user);
+        } catch (NameException | UserException e) {
             LOGGER.warn("Could not search for name", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
 
     @GetMapping("{nameId}/similar")
-    public List<ExtendedName> getSimilar(Authentication authentication, @PathVariable("nameId") String nameId) {
+    public List<Name> getSimilar(Authentication authentication, @PathVariable("nameId") String nameId) {
         try {
-            final var refName = namesRepository.get(nameId);
-            final var otherNames = namesRepository.allNames();
-            otherNames.remove(refName.getId());
-
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
-            final var partnerUser = user != null && user.getRelatedUserId() != null ? userRepository.get(user.getRelatedUserId()) : null;
-            final Collection<Name> similarNames = similarityCalculator.get(refName.getName(), otherNames)
+
+            final var refName = namesRepository.get(nameId, user);
+            final var otherNames = namesRepository.allNames();
+            final List<Name> similarNames = similarityCalculator.get(refName.getName(), otherNames)
                     .entrySet()
                     .stream()
                     .sorted((o1, o2) ->
@@ -222,7 +223,7 @@ public class NamesController {
                     .map(Map.Entry::getKey)
                     .map(id -> {
                         try {
-                            return namesRepository.get(id);
+                            return namesRepository.get(id, user);
                         } catch (NameException e) {
                             LOGGER.warn("Could read name", e);
                             e.printStackTrace();
@@ -231,10 +232,8 @@ public class NamesController {
                     })
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
-            return enrichWithVotes(similarNames,
-                    user,
-                    partnerUser);
-        } catch (NameException | UserException | VoteException e) {
+            return similarNames;
+        } catch (NameException | UserException e) {
             LOGGER.warn("Could get similar names", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -246,16 +245,11 @@ public class NamesController {
                                          @RequestParam(name = "result-count", required = false, defaultValue = "10") int limit
     ) {
         try {
-            final var numericFilters = Optional.ofNullable(attributeFilterSpecs).orElse(Collections.emptySet()).stream()
-                    .map(attributeFilterSpec -> attributeFilterSpec.split(":"))
-                    .filter(specFields -> specFields.length == 3)
-                    .map(specFields -> new FilterAttributeNumeric(
-                            AttributeKey.valueOf(specFields[0]),
-                            NumericOperator.valueOf(specFields[1]),
-                            Double.parseDouble(specFields[2])
-                    ))
-                    .collect(Collectors.toSet());
-            final var allRecommendations = recommender.getRecommendation(userRepository.get(getUserId(authentication)), numericFilters);
+            final var baseRequest = new NamesRequest().basic(new BasicNameFacet()).scb(new ScbNameFacet());
+            if (attributeFilterSpecs != null) {
+                initRequestAttributeFilters(baseRequest, attributeFilterSpecs);
+            }
+            final var allRecommendations = recommender.getRecommendation(userRepository.get(getUserId(authentication)), baseRequest);
             return allRecommendations.subList(0, Math.min(limit, allRecommendations.size()));
         } catch (RecommenderException | UserException e) {
             LOGGER.warn("Could get recommendations", e);
@@ -263,30 +257,11 @@ public class NamesController {
         }
     }
 
-    public static class ExtendedName extends Name {
-        private final Long userVoteValue;
-        private final Long partnerVoteValue;
-
-        public ExtendedName(String name, String id, Set<Attribute<?>> attributes, Long userVoteValue, Long partnerVoteValue) {
-            super(name, id, attributes);
-            this.userVoteValue = userVoteValue;
-            this.partnerVoteValue = partnerVoteValue;
-        }
-
-        public Long getUserVoteValue() {
-            return userVoteValue;
-        }
-
-        public Long getPartnerVoteValue() {
-            return partnerVoteValue;
-        }
-    }
-
     public static class SearchResult {
-        public final List<ExtendedName> names;
+        public final List<Name> names;
         public final boolean isLast;
 
-        public SearchResult(List<ExtendedName> names, boolean isLast) {
+        public SearchResult(List<Name> names, boolean isLast) {
             this.names = names;
             this.isLast = isLast;
         }

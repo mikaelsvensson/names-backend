@@ -19,6 +19,9 @@ public class SimilarityCalculator {
         for (Map.Entry<String, String> entry : otherNames.entrySet()) {
             final var otherId = entry.getKey();
             final var otherName = entry.getValue();
+            if (refName.equals(otherName)) {
+                continue;
+            }
             var levenshtein = 1.0 - (1.0 * levenshteinDistance.apply(refName, otherName) / refName.length());
             if (levenshtein >= 0.75) {
                 otherResults.putIfAbsent(otherId, new HashMap<>());

@@ -1,6 +1,7 @@
 package info.mikaelsvensson.babyname.service.util;
 
 import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.name.ScbProperties;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
@@ -107,32 +108,18 @@ public class ScbNameImporter {
 
                             try {
                                 var nameRes = namesRepository.getByName(firstName.name);
-                                var name = nameRes.isEmpty() ? namesRepository.add(firstName.name, user, Collections.emptySet()) : nameRes.get();
+                                var name = nameRes.isEmpty() ? namesRepository.add(firstName.name, user) : nameRes.get();
 
-                                final var expectedAttrs = new HashMap<AttributeKey, Double>();
-                                expectedAttrs.put(
-                                        AttributeKey.SCB_PERCENT_OF_POPULATION,
-                                        1.0 * (femaleCount + maleCount) / totalPeopleCount);
-                                expectedAttrs.put(
-                                        AttributeKey.SCB_PERCENT_WOMEN,
-                                        countTotal > 0 ? 1.0 * femaleCount / countTotal : null);
-                                for (Map.Entry<AttributeKey, Double> entry : expectedAttrs.entrySet()) {
-                                    final var key = entry.getKey();
-                                    final var expectedValue = entry.getValue();
-                                    final var actualValue = name.getAttribute(key).map(Attribute::getValue).orElse(null);
-                                    if (actualValue != null || expectedValue != null) {
-                                        // We have a value OR should have a value
-                                        if (actualValue == null) {
-                                            // We don't have a value but we should. Add it.
-                                            namesRepository.setNumericAttribute(name, user, key, expectedValue);
-                                        } else if (expectedValue == null) {
-                                            // We have a value but shouldn't. Unset it.
-                                            namesRepository.setNumericAttribute(name, user, key, expectedValue);
-                                        } else if (!actualValue.equals(expectedValue)) {
-                                            // We have a value but should have a different. Change it.
-                                            namesRepository.setNumericAttribute(name, user, key, expectedValue);
-                                        }
-                                    }
+                                final var expectedPercentOfPopulation = 1.0 * (femaleCount + maleCount) / totalPeopleCount;
+                                final var expectedPercentWomen = countTotal > 0 ? 1.0 * femaleCount / countTotal : null;
+
+                                final var isPercentOfPopulationCorrect = Objects.equals(expectedPercentOfPopulation, name.getScb().getPercentOfPopulation());
+                                final var isPercentWomenCorrect = Objects.equals(expectedPercentWomen, name.getScb().getPercentWomen());
+                                if (!isPercentOfPopulationCorrect || !isPercentWomenCorrect) {
+                                    namesRepository.setScbProperties(name, new ScbProperties(
+                                            expectedPercentOfPopulation,
+                                            expectedPercentWomen
+                                    ));
                                 }
                             } catch (NameException e) {
                                 LOGGER.warn("Could not add " + firstName.name + " because of this: " + e.getMessage());
