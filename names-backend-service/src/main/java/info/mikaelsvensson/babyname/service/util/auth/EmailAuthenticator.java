@@ -1,17 +1,14 @@
 package info.mikaelsvensson.babyname.service.util.auth;
 
 import com.auth0.jwt.JWT;
-import info.mikaelsvensson.babyname.service.controller.UserAuthenticator;
-import info.mikaelsvensson.babyname.service.controller.UserAuthenticatorException;
+import info.mikaelsvensson.babyname.service.model.ActionStatus;
+import info.mikaelsvensson.babyname.service.model.ActionType;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.UserProvider;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionException;
-import info.mikaelsvensson.babyname.service.model.ActionStatus;
-import info.mikaelsvensson.babyname.service.model.ActionType;
 import info.mikaelsvensson.babyname.service.repository.actions.ActionsRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
-import info.mikaelsvensson.babyname.service.util.JwtUtils;
 import info.mikaelsvensson.babyname.service.util.email.EmailSender;
 import info.mikaelsvensson.babyname.service.util.email.EmailSenderException;
 import info.mikaelsvensson.babyname.service.util.template.Template;

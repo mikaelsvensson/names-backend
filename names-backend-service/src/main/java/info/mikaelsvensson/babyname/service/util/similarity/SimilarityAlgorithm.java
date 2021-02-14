@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.repository.names;
+package info.mikaelsvensson.babyname.service.util.similarity;
 
 public enum SimilarityAlgorithm {
     LEVENSHTEIN,

@@ -1,8 +1,8 @@
 package info.mikaelsvensson.babyname.service.repository.votes;
 
-import info.mikaelsvensson.babyname.service.model.name.Name;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.Vote;
+import info.mikaelsvensson.babyname.service.model.name.Name;
 import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
 import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
@@ -25,11 +25,17 @@ public class DbVotesRepository implements VotesRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DbVotesRepository.class);
 
-    @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    @Autowired
-    private Metrics metrics;
+    private final Metrics metrics;
+
+    public DbVotesRepository(
+            @Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+            @Autowired Metrics metrics
+    ) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+        this.metrics = metrics;
+    }
 
     @Override
     public List<Vote> all(User user) throws VoteException {

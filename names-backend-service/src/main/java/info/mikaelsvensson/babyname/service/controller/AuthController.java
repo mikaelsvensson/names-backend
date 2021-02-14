@@ -1,11 +1,10 @@
 package info.mikaelsvensson.babyname.service.controller;
 
-import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.User;
+import info.mikaelsvensson.babyname.service.model.UserProvider;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
-import info.mikaelsvensson.babyname.service.util.*;
-import info.mikaelsvensson.babyname.service.util.auth.EmailAuthenticator;
-import info.mikaelsvensson.babyname.service.util.auth.FacebookAuthenticator;
+import info.mikaelsvensson.babyname.service.util.auth.*;
 import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
 import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;

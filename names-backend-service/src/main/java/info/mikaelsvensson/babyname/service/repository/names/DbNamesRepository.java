@@ -1,6 +1,6 @@
 package info.mikaelsvensson.babyname.service.repository.names;
 
-import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.name.MetricsProperties;
 import info.mikaelsvensson.babyname.service.model.name.Name;
 import info.mikaelsvensson.babyname.service.model.name.ScbProperties;
@@ -32,14 +32,16 @@ public class DbNamesRepository implements NamesRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DbNamesRepository.class);
 
-    private ApplicationEventPublisher applicationEventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     private Map<String, String> cacheAllNames;
 
-    public DbNamesRepository(@Autowired ApplicationEventPublisher applicationEventPublisher,
-                             @Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+    public DbNamesRepository(
+            @Autowired ApplicationEventPublisher applicationEventPublisher,
+            @Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate
+    ) {
         this.applicationEventPublisher = applicationEventPublisher;
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
@@ -206,7 +208,7 @@ public class DbNamesRepository implements NamesRepository {
                 params.put("nameOwners", request.basic.nameOwnerUserIds);
             }
             if (request.metrics != null && !request.metrics.syllableFilter.isEmpty()) {
-                for (FilterAttributeNumeric filter : request.metrics.syllableFilter) {
+                for (FilterNumeric filter : request.metrics.syllableFilter) {
                     var operator = switch (filter.getOperator()) {
                         case LESS_THAN -> '<';
                         case GREATER_THAN -> '>';
@@ -217,7 +219,7 @@ public class DbNamesRepository implements NamesRepository {
                 }
             }
             if (request.scb != null && !request.scb.percentOfPopulationFilter.isEmpty()) {
-                for (FilterAttributeNumeric filter : request.scb.percentOfPopulationFilter) {
+                for (FilterNumeric filter : request.scb.percentOfPopulationFilter) {
                     var operator = switch (filter.getOperator()) {
                         case LESS_THAN -> '<';
                         case GREATER_THAN -> '>';
@@ -228,7 +230,7 @@ public class DbNamesRepository implements NamesRepository {
                 }
             }
             if (request.scb != null && request.scb.percentWomenFilter != null) {
-                for (FilterAttributeNumeric filter : request.scb.percentWomenFilter) {
+                for (FilterNumeric filter : request.scb.percentWomenFilter) {
                     var operator = switch (filter.getOperator()) {
                         case LESS_THAN -> '<';
                         case GREATER_THAN -> '>';

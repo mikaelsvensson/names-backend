@@ -4,13 +4,13 @@ import java.util.Collection;
 import java.util.LinkedList;
 
 public class MetricsNameFacet extends DefaultNameFacet {
-    public Collection<FilterAttributeNumeric> syllableFilter = new LinkedList<>();
+    public Collection<FilterNumeric> syllableFilter = new LinkedList<>();
 
     public MetricsNameFacet() {
         this.returned(true);
     }
 
-    public MetricsNameFacet syllableFilter(FilterAttributeNumeric syllableFilter) {
+    public MetricsNameFacet syllableFilter(FilterNumeric syllableFilter) {
         this.syllableFilter.add(syllableFilter);
         return this;
     }

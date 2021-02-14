@@ -1,6 +1,4 @@
-package info.mikaelsvensson.babyname.service.controller;
-
-import java.security.NoSuchAlgorithmException;
+package info.mikaelsvensson.babyname.service.util.auth;
 
 public class UserAuthenticatorException extends Exception {
     public UserAuthenticatorException(Exception e) {

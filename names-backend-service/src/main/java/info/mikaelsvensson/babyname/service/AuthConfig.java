@@ -1,5 +1,6 @@
-package info.mikaelsvensson.babyname.service.util;
+package info.mikaelsvensson.babyname.service;
 
+import info.mikaelsvensson.babyname.service.util.auth.JwtFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;

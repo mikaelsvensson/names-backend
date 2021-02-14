@@ -1,7 +1,5 @@
 package info.mikaelsvensson.babyname.service.repository.names.request;
 
-import info.mikaelsvensson.babyname.service.repository.names.FilterVote;
-
 import java.util.Set;
 
 public class VotesNameFacet extends DefaultNameFacet {

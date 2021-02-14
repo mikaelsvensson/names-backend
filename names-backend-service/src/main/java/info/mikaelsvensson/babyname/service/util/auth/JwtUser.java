@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.util;
+package info.mikaelsvensson.babyname.service.util.auth;
 
 import org.springframework.security.core.AuthenticatedPrincipal;
 

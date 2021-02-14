@@ -1,10 +1,10 @@
-package info.mikaelsvensson.babyname.service.repository.names;
+package info.mikaelsvensson.babyname.service.repository.names.request;
 
 import java.util.Set;
 
 public class FilterVote {
-    private Set<String> userIds;
-    private FilterVoteCondition condition;
+    private final Set<String> userIds;
+    private final FilterVoteCondition condition;
 
     public FilterVote(Set<String> userIds, FilterVoteCondition condition) {
         this.userIds = userIds;

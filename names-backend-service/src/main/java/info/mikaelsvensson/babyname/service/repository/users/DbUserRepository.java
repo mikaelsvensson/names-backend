@@ -29,7 +29,8 @@ public class DbUserRepository implements UserRepository {
 
     public DbUserRepository(
             @Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-            @Autowired Metrics metrics) {
+            @Autowired Metrics metrics
+    ) {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
         this.metrics = metrics;
     }

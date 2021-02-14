@@ -1,15 +1,20 @@
 package info.mikaelsvensson.babyname.service.controller;
 
-import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.Vote;
 import info.mikaelsvensson.babyname.service.model.name.Name;
-import info.mikaelsvensson.babyname.service.repository.names.*;
+import info.mikaelsvensson.babyname.service.repository.names.NameException;
+import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
-import info.mikaelsvensson.babyname.service.util.*;
+import info.mikaelsvensson.babyname.service.util.Recommender;
+import info.mikaelsvensson.babyname.service.util.RecommenderException;
+import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
+import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
+import info.mikaelsvensson.babyname.service.util.similarity.SimilarityCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -151,8 +156,8 @@ public class NamesController {
                 .map(attributeFilterSpec -> attributeFilterSpec.split(":"))
                 .filter(specFields -> specFields.length == 3)
                 .forEach(specFields -> {
-                    final var filter = new FilterAttributeNumeric(
-                            NumericOperator.valueOf(specFields[1]),
+                    final var filter = new FilterNumeric(
+                            FilterNumericOperator.valueOf(specFields[1]),
                             Double.parseDouble(specFields[2])
                     );
                     switch (AttributeKey.valueOf(specFields[0])) {

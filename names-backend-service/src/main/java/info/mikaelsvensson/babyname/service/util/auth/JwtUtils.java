@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.util;
+package info.mikaelsvensson.babyname.service.util.auth;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;

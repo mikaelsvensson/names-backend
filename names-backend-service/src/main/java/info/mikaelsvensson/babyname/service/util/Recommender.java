@@ -1,12 +1,11 @@
 package info.mikaelsvensson.babyname.service.util;
 
-import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.name.Name;
 import info.mikaelsvensson.babyname.service.model.name.RecommendationProperties;
-import info.mikaelsvensson.babyname.service.repository.names.*;
-import info.mikaelsvensson.babyname.service.repository.names.request.BasicNameFacet;
-import info.mikaelsvensson.babyname.service.repository.names.request.NamesRequest;
-import info.mikaelsvensson.babyname.service.repository.names.request.VotesNameFacet;
+import info.mikaelsvensson.babyname.service.repository.names.NameException;
+import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
+import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;

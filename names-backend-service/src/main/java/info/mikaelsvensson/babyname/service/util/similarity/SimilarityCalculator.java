@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.repository.names;
+package info.mikaelsvensson.babyname.service.util.similarity;
 
 import org.apache.commons.text.similarity.JaroWinklerDistance;
 import org.apache.commons.text.similarity.LevenshteinDistance;

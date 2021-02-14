@@ -1,7 +1,6 @@
 package info.mikaelsvensson.babyname.service.repository.relationships;
 
 import info.mikaelsvensson.babyname.service.model.User;
-import info.mikaelsvensson.babyname.service.repository.users.DbUserRepository;
 import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
 import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
@@ -12,7 +11,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Map;
 
 @Repository
@@ -25,8 +23,10 @@ public class DbRelationshipsRepository implements RelationshipsRepository {
 
     private final Metrics metrics;
 
-    public DbRelationshipsRepository(@Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-                                     @Autowired Metrics metrics) {
+    public DbRelationshipsRepository(
+            @Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+            @Autowired Metrics metrics
+    ) {
         this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
         this.metrics = metrics;
     }

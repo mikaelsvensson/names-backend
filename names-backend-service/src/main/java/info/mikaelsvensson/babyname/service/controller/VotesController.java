@@ -1,6 +1,5 @@
 package info.mikaelsvensson.babyname.service.controller;
 
-import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.Vote;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
@@ -17,11 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("votes")

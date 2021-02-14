@@ -1,4 +1,4 @@
-package info.mikaelsvensson.babyname.service.util;
+package info.mikaelsvensson.babyname.service.util.auth;
 
 import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
 import info.mikaelsvensson.babyname.service.util.metrics.Metrics;

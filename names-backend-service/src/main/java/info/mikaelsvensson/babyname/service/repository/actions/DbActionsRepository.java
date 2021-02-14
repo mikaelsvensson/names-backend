@@ -31,8 +31,13 @@ public class DbActionsRepository implements ActionsRepository {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    @Autowired
-    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    public DbActionsRepository(
+            @Autowired NamedParameterJdbcTemplate namedParameterJdbcTemplate
+    ) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
+    }
 
     @Override
     public Action get(String id) throws ActionException {

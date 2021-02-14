@@ -4,19 +4,19 @@ import java.util.Collection;
 import java.util.LinkedList;
 
 public class ScbNameFacet extends DefaultNameFacet {
-    public Collection<FilterAttributeNumeric> percentOfPopulationFilter = new LinkedList<>();
-    public Collection<FilterAttributeNumeric> percentWomenFilter = new LinkedList<>();
+    public Collection<FilterNumeric> percentOfPopulationFilter = new LinkedList<>();
+    public Collection<FilterNumeric> percentWomenFilter = new LinkedList<>();
 
     public ScbNameFacet() {
         returned(true);
     }
 
-    public ScbNameFacet percentOfPopulationFilter(FilterAttributeNumeric percentOfPopulationFilter) {
+    public ScbNameFacet percentOfPopulationFilter(FilterNumeric percentOfPopulationFilter) {
         this.percentOfPopulationFilter.add(percentOfPopulationFilter);
         return this;
     }
 
-    public ScbNameFacet percentWomenFilter(FilterAttributeNumeric percentWomenFilter) {
+    public ScbNameFacet percentWomenFilter(FilterNumeric percentWomenFilter) {
         this.percentWomenFilter.add(percentWomenFilter);
         return this;
     }
