@@ -1,10 +1,7 @@
-package info.mikaelsvensson.babyname.service.util;
+package info.mikaelsvensson.babyname.service.util.nameprovider;
 
-import info.mikaelsvensson.babyname.service.model.*;
-import info.mikaelsvensson.babyname.service.model.name.ScbProperties;
-import info.mikaelsvensson.babyname.service.repository.names.NameException;
+import info.mikaelsvensson.babyname.service.repository.names.Country;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
-import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.slf4j.Logger;
@@ -23,14 +20,25 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
-public class ScbNameImporter {
+public class ScbNameImporter extends AbstractNameImporter {
 
     public static final int BOOT_ORDER = 20;
+
+    public ScbNameImporter(
+            @Autowired NamesRepository namesRepository,
+            @Autowired UserRepository userRepository,
+            @Value("${scbImporter.onStart:true}") boolean onStart,
+            @Value("classpath:names/se/names_sorted.txt") Resource database,
+            @Autowired TaskScheduler scheduler) {
+        super(SYSTEM_NAME, namesRepository, userRepository);
+        this.onStart = onStart;
+        this.database = database;
+        this.scheduler = scheduler;
+    }
 
     private static class FileEntry {
         private final String name;
@@ -50,22 +58,11 @@ public class ScbNameImporter {
 
     public static final String SYSTEM_NAME = "scbImporter";
 
-    @Value("${scbImporter.onStart:true}")
-    private boolean onStart;
+    private final boolean onStart;
 
-    @Value("classpath:names_sorted.txt")
-    private Resource database;
+    private final Resource database;
 
-    @Autowired
-    private NamesRepository namesRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private TaskScheduler scheduler;
-
-    private User user;
+    private final TaskScheduler scheduler;
 
     // About event listener: https://www.baeldung.com/running-setup-logic-on-startup-in-spring
     @EventListener
@@ -78,8 +75,6 @@ public class ScbNameImporter {
         scheduler.schedule(() -> {
             LOGGER.info("SCB data sync started.");
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
-                final var user = getUser();
-
                 final var fileEntries = reader.lines()
                         .map(line -> Pattern.compile(",").split(line))
                         .filter(columns -> columns.length == 3)
@@ -106,24 +101,10 @@ public class ScbNameImporter {
                             var firstName = entries.get(0);
                             final var countTotal = femaleCount + maleCount;
 
-                            try {
-                                var nameRes = namesRepository.getByName(firstName.name);
-                                var name = nameRes.isEmpty() ? namesRepository.add(firstName.name, user) : nameRes.get();
+                            final var expectedPercentOfPopulation = 1.0 * (femaleCount + maleCount) / totalPeopleCount;
+                            final var expectedPercentWomen = countTotal > 0 ? 1.0 * femaleCount / countTotal : null;
 
-                                final var expectedPercentOfPopulation = 1.0 * (femaleCount + maleCount) / totalPeopleCount;
-                                final var expectedPercentWomen = countTotal > 0 ? 1.0 * femaleCount / countTotal : null;
-
-                                final var isPercentOfPopulationCorrect = Objects.equals(expectedPercentOfPopulation, name.getScb().getPercentOfPopulation());
-                                final var isPercentWomenCorrect = Objects.equals(expectedPercentWomen, name.getScb().getPercentWomen());
-                                if (!isPercentOfPopulationCorrect || !isPercentWomenCorrect) {
-                                    namesRepository.setScbProperties(name, new ScbProperties(
-                                            expectedPercentOfPopulation,
-                                            expectedPercentWomen
-                                    ));
-                                }
-                            } catch (NameException e) {
-                                LOGGER.warn("Could not add " + firstName.name + " because of this: " + e.getMessage());
-                            }
+                            addName(firstName.name, expectedPercentOfPopulation, expectedPercentWomen, Country.SWEDEN);
 
                             gcCounter.increment();
                             if (gcCounter.intValue() % 1000 == 0) {
@@ -138,20 +119,5 @@ public class ScbNameImporter {
             }
             LOGGER.info("SCB data sync done.");
         }, Instant.now().plusSeconds(1));
-    }
-
-    public User getUser() {
-        if (user == null) {
-            try {
-                user = userRepository.getByProvider(UserProvider.INTERNAL, SYSTEM_NAME);
-            } catch (UserException e) {
-                try {
-                    user = userRepository.addFromProvider(UserProvider.INTERNAL, SYSTEM_NAME);
-                } catch (UserException userException) {
-                    throw new RuntimeException(userException);
-                }
-            }
-        }
-        return user;
     }
 }

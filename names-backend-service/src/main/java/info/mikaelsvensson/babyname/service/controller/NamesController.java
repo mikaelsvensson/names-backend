@@ -2,6 +2,7 @@ package info.mikaelsvensson.babyname.service.controller;
 
 import info.mikaelsvensson.babyname.service.model.Vote;
 import info.mikaelsvensson.babyname.service.model.name.Name;
+import info.mikaelsvensson.babyname.service.repository.names.Country;
 import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.names.request.*;
@@ -12,8 +13,9 @@ import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
 import info.mikaelsvensson.babyname.service.util.Recommender;
 import info.mikaelsvensson.babyname.service.util.RecommenderException;
-import info.mikaelsvensson.babyname.service.util.ScbNameImporter;
 import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
+import info.mikaelsvensson.babyname.service.util.nameprovider.ScbNameImporter;
+import info.mikaelsvensson.babyname.service.util.nameprovider.SsaNameImporter;
 import info.mikaelsvensson.babyname.service.util.similarity.SimilarityCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +57,9 @@ public class NamesController {
     private ScbNameImporter scbNameImporter;
 
     @Autowired
+    private SsaNameImporter ssaNameImporter;
+
+    @Autowired
     private Recommender recommender;
 
     public NamesController() throws IOException {
@@ -77,6 +82,7 @@ public class NamesController {
 
             final var userIds = new HashSet<String>();
             userIds.add(scbNameImporter.getUser().getId());
+            userIds.add(ssaNameImporter.getUser().getId());
 
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
@@ -130,8 +136,11 @@ public class NamesController {
                 initRequestAttributeFilters(request, attributeFilterSpecs);
             }
 
-            if (request.scb == null) {
-                request.scb(new ScbNameFacet());
+            if (request.demographics == null || !request.demographics.containsKey(Country.SWEDEN)) {
+                request.demographics(Country.SWEDEN, new PopulationNameFacet());
+            }
+            if (request.demographics == null || !request.demographics.containsKey(Country.USA)) {
+                request.demographics(Country.USA, new PopulationNameFacet());
             }
 
             final var names = new ArrayList<Name>();
@@ -150,7 +159,7 @@ public class NamesController {
     }
 
     private void initRequestAttributeFilters(NamesRequest request, Set<String> attributeFilterSpecs) {
-        final var scbFacet = new ScbNameFacet();
+        final var demographicFacet = new PopulationNameFacet();
         final var metricsFacet = new MetricsNameFacet();
         attributeFilterSpecs.stream()
                 .map(attributeFilterSpec -> attributeFilterSpec.split(":"))
@@ -166,12 +175,12 @@ public class NamesController {
                             request.metrics(metricsFacet);
                             break;
                         case SCB_PERCENT_WOMEN:
-                            scbFacet.percentWomenFilter(filter);
-                            request.scb(scbFacet);
+                            demographicFacet.percentWomenFilter(filter);
+                            request.demographics(Country.SWEDEN, demographicFacet);
                             break;
                         case SCB_PERCENT_OF_POPULATION:
-                            scbFacet.percentOfPopulationFilter(filter);
-                            request.scb(scbFacet);
+                            demographicFacet.percentOfPopulationFilter(filter);
+                            request.demographics(Country.SWEDEN, demographicFacet);
                             break;
                     }
                 });
@@ -250,7 +259,7 @@ public class NamesController {
                                          @RequestParam(name = "result-count", required = false, defaultValue = "10") int limit
     ) {
         try {
-            final var baseRequest = new NamesRequest().basic(new BasicNameFacet()).scb(new ScbNameFacet());
+            final var baseRequest = new NamesRequest().basic(new BasicNameFacet()).demographics(Country.SWEDEN, new PopulationNameFacet());
             if (attributeFilterSpecs != null) {
                 initRequestAttributeFilters(baseRequest, attributeFilterSpecs);
             }

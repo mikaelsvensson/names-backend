@@ -1,11 +1,16 @@
 package info.mikaelsvensson.babyname.service.repository.names.request;
 
+import info.mikaelsvensson.babyname.service.repository.names.Country;
+
+import java.util.HashMap;
+import java.util.Map;
+
 public class NamesRequest {
     public int offset = 0;
     public int limit = Integer.MAX_VALUE;
     public BasicNameFacet basic;
     public MetricsNameFacet metrics;
-    public ScbNameFacet scb;
+    public Map<Country, PopulationNameFacet> demographics;
     public VotesNameFacet votes;
 
     public NamesRequest offset(int offset) {
@@ -28,8 +33,11 @@ public class NamesRequest {
         return this;
     }
 
-    public NamesRequest scb(ScbNameFacet scb) {
-        this.scb = scb;
+    public NamesRequest demographics(Country country, PopulationNameFacet demographics) {
+        if (this.demographics == null) {
+            this.demographics = new HashMap<>();
+        }
+        this.demographics.put(country, demographics);
         return this;
     }
 

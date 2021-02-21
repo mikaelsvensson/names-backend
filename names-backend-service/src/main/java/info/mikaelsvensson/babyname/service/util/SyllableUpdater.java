@@ -10,6 +10,7 @@ import info.mikaelsvensson.babyname.service.repository.names.request.BasicNameFa
 import info.mikaelsvensson.babyname.service.repository.names.request.MetricsNameFacet;
 import info.mikaelsvensson.babyname.service.repository.names.request.NamesRequest;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
+import info.mikaelsvensson.babyname.service.util.nameprovider.ScbNameImporter;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

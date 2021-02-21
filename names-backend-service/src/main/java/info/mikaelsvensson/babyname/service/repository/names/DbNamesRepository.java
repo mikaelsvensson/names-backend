@@ -3,7 +3,7 @@ package info.mikaelsvensson.babyname.service.repository.names;
 import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.name.MetricsProperties;
 import info.mikaelsvensson.babyname.service.model.name.Name;
-import info.mikaelsvensson.babyname.service.model.name.ScbProperties;
+import info.mikaelsvensson.babyname.service.model.name.PopulationProperties;
 import info.mikaelsvensson.babyname.service.model.name.VotesProperties;
 import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
@@ -68,32 +68,48 @@ public class DbNamesRepository implements NamesRepository {
 
     @Override
     public synchronized Name add(String name, User user) throws NameException {
-        try {
-            final var obj = new Name(
-                    name,
-                    IdUtils.random()
-            );
-            namedParameterJdbcTemplate.update(
-                    "INSERT INTO names (id, name) VALUES (:id, :name)",
-                    Map.of(
-                            "id", obj.getId(),
-                            "name", obj.getName()
-                    ));
-            namedParameterJdbcTemplate.update(
-                    "INSERT INTO name_owners (name_id, user_id, created_at) VALUES (:id, :createdBy, :createdAt)",
-                    Map.of(
-                            "id", obj.getId(),
-                            "createdBy", user.getId(),
-                            "createdAt", Instant.now().toEpochMilli()
-                    ));
-
-            applicationEventPublisher.publishEvent(new NameAddedEvent(obj, this));
-
-            cacheAllNames = null;
-            return obj;
-        } catch (DataAccessException e) {
-            throw new NameException(e.getMessage());
+        final var existingName = getByName(name);
+        final var obj = existingName.isEmpty()
+                ? new Name(name, IdUtils.random())
+                : existingName.get();
+        if (existingName.isEmpty()) {
+            try {
+                namedParameterJdbcTemplate.update(
+                        "INSERT INTO names (id, name) VALUES (:id, :name)",
+                        Map.of(
+                                "id", obj.getId(),
+                                "name", obj.getName()
+                        ));
+                applicationEventPublisher.publishEvent(new NameAddedEvent(obj, this));
+            } catch (DataAccessException e) {
+                throw new NameException(e.getMessage());
+            } finally {
+                cacheAllNames = null;
+            }
         }
+        if (existingName.isEmpty() ||
+                namedParameterJdbcTemplate.queryForList(
+                        "SELECT name_id FROM name_owners WHERE name_id = :nameId AND user_id = :userId",
+                        new MapSqlParameterSource()
+                                .addValue("nameId", obj.getId())
+                                .addValue("userId", user.getId()),
+                        String.class
+                ).isEmpty()
+        ) {
+            try {
+                namedParameterJdbcTemplate.update(
+                        "INSERT INTO name_owners (name_id, user_id, created_at) VALUES (:id, :createdBy, :createdAt)",
+                        Map.of(
+                                "id", obj.getId(),
+                                "createdBy", user.getId(),
+                                "createdAt", Instant.now().toEpochMilli()
+                        ));
+            } catch (DataAccessException e) {
+                LOGGER.info("Could not set {} as owner of {}.", user.getId(), obj.getId());
+            }
+        }
+
+        return obj;
     }
 
     private static class NamesResultSetIterator implements ResultSetExtractor<Integer> {
@@ -124,11 +140,17 @@ public class DbNamesRepository implements NamesRepository {
                             getDouble(rs, "metrics__syllable_count").orElse(null)
                     ));
                 }
-                if (request.scb != null && request.scb.returned) {
-                    currentName.setScb(new ScbProperties(
-                            getDouble(rs, "scb__percent_of_population").orElse(null),
-                            getDouble(rs, "scb__percent_women").orElse(null)
-                    ));
+                if (request.demographics != null) {
+                    for (Map.Entry<Country, PopulationNameFacet> entry : request.demographics.entrySet()) {
+                        final var facet = entry.getValue();
+                        final var countryCode = entry.getKey().getCountryCode();
+                        if (facet.returned) {
+                            currentName.putDemographics(entry.getKey(), new PopulationProperties(
+                                    getDouble(rs, MessageFormat.format("demo{0}__percent_of_population", countryCode)).orElse(null),
+                                    getDouble(rs, MessageFormat.format("demo{0}__percent_women", countryCode)).orElse(null)
+                            ));
+                        }
+                    }
                 }
                 if (request.votes != null && request.votes.returned) {
                     currentName.setVotes(new VotesProperties(
@@ -171,10 +193,16 @@ public class DbNamesRepository implements NamesRepository {
                 sqlSelect.add("metrics.syllable_count AS metrics__syllable_count");
                 sqlLeftJoins.add("names_metrics AS metrics ON n.id = metrics.name_id ");
             }
-            if (request.scb != null && request.scb.returned) {
-                sqlSelect.add("scb.percent_of_population AS scb__percent_of_population");
-                sqlSelect.add("scb.percent_women AS scb__percent_women");
-                sqlLeftJoins.add("names_scb AS scb ON n.id = scb.name_id ");
+            if (request.demographics != null) {
+                for (Map.Entry<Country, PopulationNameFacet> entry : request.demographics.entrySet()) {
+                    final var facet = entry.getValue();
+                    final var countryCode = entry.getKey().getCountryCode();
+                    if (facet.returned) {
+                        sqlSelect.add(MessageFormat.format("demo{0}.percent_of_population AS demo{0}__percent_of_population", countryCode));
+                        sqlSelect.add(MessageFormat.format("demo{0}.percent_women AS demo{0}__percent_women", countryCode));
+                        sqlLeftJoins.add(MessageFormat.format("names_demographics AS demo{0} ON n.id = demo{0}.name_id AND demo{0}.country = ''{0}'' ", countryCode));
+                    }
+                }
             }
             if (request.votes != null && request.votes.returned) {
                 if (request.votes.selfUserId != null) {
@@ -218,28 +246,35 @@ public class DbNamesRepository implements NamesRepository {
                     params.put("syllableFilter" + params.size(), filter.getValue());
                 }
             }
-            if (request.scb != null && !request.scb.percentOfPopulationFilter.isEmpty()) {
-                for (FilterNumeric filter : request.scb.percentOfPopulationFilter) {
-                    var operator = switch (filter.getOperator()) {
-                        case LESS_THAN -> '<';
-                        case GREATER_THAN -> '>';
-                    };
-                    sqlLeftJoins.add("names_scb AS scb ON n.id = scb.name_id ");
-                    sqlWhere.add(MessageFormat.format("scb.percent_of_population {0} :percentOfPopulationFilter{1}", operator, params.size()));
-                    params.put("percentOfPopulationFilter" + params.size(), filter.getValue());
+            if (request.demographics != null) {
+                for (Map.Entry<Country, PopulationNameFacet> entry : request.demographics.entrySet()) {
+                    final var facet = entry.getValue();
+                    final var countryCode = entry.getKey().getCountryCode();
+                    if (!facet.percentOfPopulationFilter.isEmpty()) {
+                        for (FilterNumeric filter : facet.percentOfPopulationFilter) {
+                            var operator = switch (filter.getOperator()) {
+                                case LESS_THAN -> '<';
+                                case GREATER_THAN -> '>';
+                            };
+                            sqlLeftJoins.add(MessageFormat.format("names_demographics AS demo{0} ON n.id = demo{0}.name_id AND demo{0}.country = ''{0}'' ", countryCode));
+                            sqlWhere.add(MessageFormat.format("demo{0}.percent_of_population {1} :percentOfPopulationFilter{2}", countryCode, operator, params.size()));
+                            params.put("percentOfPopulationFilter" + params.size(), filter.getValue());
+                        }
+                    }
+                    if (!facet.percentWomenFilter.isEmpty()) {
+                        for (FilterNumeric filter : facet.percentWomenFilter) {
+                            var operator = switch (filter.getOperator()) {
+                                case LESS_THAN -> '<';
+                                case GREATER_THAN -> '>';
+                            };
+                            sqlLeftJoins.add(MessageFormat.format("names_demographics AS demo{0} ON n.id = demo{0}.name_id AND demo{0}.country = ''{0}'' ", countryCode));
+                            sqlWhere.add(MessageFormat.format("demo{0}.percent_women {1} :percentWomenFilter{2}", countryCode, operator, params.size()));
+                            params.put("percentWomenFilter" + params.size(), filter.getValue());
+                        }
+                    }
                 }
             }
-            if (request.scb != null && request.scb.percentWomenFilter != null) {
-                for (FilterNumeric filter : request.scb.percentWomenFilter) {
-                    var operator = switch (filter.getOperator()) {
-                        case LESS_THAN -> '<';
-                        case GREATER_THAN -> '>';
-                    };
-                    sqlLeftJoins.add("names_scb AS scb ON n.id = scb.name_id ");
-                    sqlWhere.add(MessageFormat.format("scb.percent_women {0} :percentWomenFilter{1}", operator, params.size()));
-                    params.put("percentWomenFilter" + params.size(), filter.getValue());
-                }
-            }
+
             if (request.votes != null && request.votes.filterVotes != null && !request.votes.filterVotes.isEmpty()) {
                 for (FilterVote filterVote : request.votes.filterVotes) {
                     if (filterVote.getUserIds().isEmpty()) {
@@ -292,7 +327,8 @@ public class DbNamesRepository implements NamesRepository {
         var res = new Name[]{null};
         final var request = new NamesRequest()
                 .basic(new BasicNameFacet().nameId(nameId))
-                .scb(new ScbNameFacet())
+                .demographics(Country.SWEDEN, new PopulationNameFacet())
+                .demographics(Country.USA, new PopulationNameFacet())
                 .metrics(new MetricsNameFacet());
         if (user != null) {
             request.votes(new VotesNameFacet()
@@ -310,7 +346,7 @@ public class DbNamesRepository implements NamesRepository {
     @Override
     public Optional<Name> getByName(String name) throws NameException {
         var res = new Name[]{null};
-        find(new NamesRequest().basic(new BasicNameFacet().nameExact(name)).scb(new ScbNameFacet()), n -> res[0] = n);
+        find(new NamesRequest().basic(new BasicNameFacet().nameExact(name)).demographics(Country.SWEDEN, new PopulationNameFacet()).demographics(Country.USA, new PopulationNameFacet()), n -> res[0] = n);
         if (res[0] != null) {
             return Optional.of(res[0]);
         } else {
@@ -319,23 +355,23 @@ public class DbNamesRepository implements NamesRepository {
     }
 
     @Override
-    public void setScbProperties(Name name, ScbProperties properties) throws NameException {
+    public void setDemographicsProperties(Name name, Country country, PopulationProperties properties) throws NameException {
         final var sqlParams = new MapSqlParameterSource()
                 .addValue("nameId", name.getId())
+                .addValue("country", country.getCountryCode())
                 .addValue("percentOfPopulation", properties.getPercentOfPopulation())
                 .addValue("percentWomen", properties.getPercentWomen());
         try {
-            var rowsInserted = namedParameterJdbcTemplate.update("INSERT INTO names_scb (name_id, percent_of_population, percent_women) VALUES (:nameId, :percentOfPopulation, :percentWomen)", sqlParams);
+            var rowsInserted = namedParameterJdbcTemplate.update("INSERT INTO names_demographics (name_id, country, percent_of_population, percent_women) VALUES (:nameId, :country, :percentOfPopulation, :percentWomen)", sqlParams);
             if (rowsInserted != 1) {
-                throw new NameException(MessageFormat.format("Could not set metrics for name {0}. {1} rows inserted.", name.getId(), rowsInserted));
+                throw new NameException(MessageFormat.format("Could not set metrics for name {0} in {1}. {2} rows inserted.", name.getId(), country.name(), rowsInserted));
             }
         } catch (DataAccessException e) {
-            var rowsUpdated = namedParameterJdbcTemplate.update("UPDATE names_scb SET percent_of_population = :percentOfPopulation, percent_women = :percentWomen WHERE name_id = :nameId", sqlParams);
+            var rowsUpdated = namedParameterJdbcTemplate.update("UPDATE names_demographics SET percent_of_population = :percentOfPopulation, percent_women = :percentWomen WHERE name_id = :nameId AND country = :country", sqlParams);
             if (rowsUpdated != 1) {
-                throw new NameException(MessageFormat.format("Could not set metrics for name {0}. {1} rows updaded.", name.getId(), rowsUpdated));
+                throw new NameException(MessageFormat.format("Could not set metrics for name {0} in {1}. {2} rows updaded.", name.getId(), country.name(), rowsUpdated));
             }
         }
-
     }
 
     @Override

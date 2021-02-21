@@ -1,9 +1,9 @@
 package info.mikaelsvensson.babyname.service.repository.names;
 
-import info.mikaelsvensson.babyname.service.model.*;
+import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.name.MetricsProperties;
 import info.mikaelsvensson.babyname.service.model.name.Name;
-import info.mikaelsvensson.babyname.service.model.name.ScbProperties;
+import info.mikaelsvensson.babyname.service.model.name.PopulationProperties;
 import info.mikaelsvensson.babyname.service.repository.names.request.NamesRequest;
 import org.springframework.stereotype.Repository;
 
@@ -23,7 +23,7 @@ public interface NamesRepository {
 
     Optional<Name> getByName(String name) throws NameException;
 
-    void setScbProperties(Name name, ScbProperties properties) throws NameException;
+    void setDemographicsProperties(Name name, Country country, PopulationProperties properties) throws NameException;
 
     void setMetricsProperties(Name name, MetricsProperties properties) throws NameException;
 }

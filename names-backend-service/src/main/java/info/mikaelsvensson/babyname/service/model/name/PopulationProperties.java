@@ -1,10 +1,10 @@
 package info.mikaelsvensson.babyname.service.model.name;
 
-public class ScbProperties {
+public class PopulationProperties {
     private final Double percentOfPopulation;
     private final Double percentWomen;
 
-    public ScbProperties(Double percentOfPopulation, Double percentWomen) {
+    public PopulationProperties(Double percentOfPopulation, Double percentWomen) {
         this.percentOfPopulation = percentOfPopulation;
         this.percentWomen = percentWomen;
     }

@@ -309,3 +309,42 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: name_attributes_float
+  #
+  # Change set 8: Modify SCB table to accommodate data from multiple countries
+  #
+  - changeSet:
+      id: 008_multi_country_demographics
+      author: mikael.svensson
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: names_scb
+            constraintName: fk_namesscb_nameid
+        - dropPrimaryKey:
+            tableName: names_scb
+        - renameTable:
+            oldTableName:  names_scb
+            newTableName:  names_demographics
+        - addColumn:
+            tableName: names_demographics
+            columns:
+              name: country
+              type: char(2)
+              afterColumn: name_id
+        - addNotNullConstraint:
+            columnName: country
+            constraintName: nn_namesdemographics_country
+            defaultNullValue: se
+            tableName: names_demographics
+        - addPrimaryKey:
+            tableName: names_demographics
+            columnNames: name_id,country
+            constraintName: pk_namesdemographics
+        - addForeignKeyConstraint:
+            baseTableName:  names_demographics
+            baseColumnNames:  name_id
+            constraintName:  fk_namesdemographics_nameid
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: names
+            referencedColumnNames: id
+            validate:  true

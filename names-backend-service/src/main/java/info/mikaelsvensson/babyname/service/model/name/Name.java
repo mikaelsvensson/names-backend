@@ -1,12 +1,16 @@
 package info.mikaelsvensson.babyname.service.model.name;
 
+import info.mikaelsvensson.babyname.service.repository.names.Country;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class Name {
     private String id;
     protected String name;
     private MetricsProperties metrics;
-    private ScbProperties scb;
+    private Map<Country, PopulationProperties> demographics;
     private VotesProperties votes;
     private RecommendationProperties recommendation;
 
@@ -47,14 +51,6 @@ public class Name {
         return metrics;
     }
 
-    public void setScb(ScbProperties scb) {
-        this.scb = scb;
-    }
-
-    public ScbProperties getScb() {
-        return scb;
-    }
-
     public void setVotes(VotesProperties votes) {
         this.votes = votes;
     }
@@ -69,5 +65,21 @@ public class Name {
 
     public RecommendationProperties getRecommendation() {
         return recommendation;
+    }
+
+    public Map<Country, PopulationProperties> getDemographics() {
+        return demographics;
+    }
+
+    public Name setDemographics(Map<Country, PopulationProperties> demographics) {
+        this.demographics = demographics;
+        return this;
+    }
+
+    public void putDemographics(Country country, PopulationProperties properties) {
+        if (demographics == null) {
+            demographics = new HashMap<>();
+        }
+        demographics.putIfAbsent(country, properties);
     }
 }
