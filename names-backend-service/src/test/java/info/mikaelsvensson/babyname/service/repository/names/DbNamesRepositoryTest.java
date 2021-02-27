@@ -114,7 +114,7 @@ class DbNamesRepositoryTest {
                 new NamesRequest()
                         .basic(new BasicNameFacet().namePrefix("Alic"))
                         .metrics(new MetricsNameFacet())
-                        .demographics(Country.SWEDEN, new PopulationNameFacet()),
+                        .demographics(new PopulationNameFacet(), Country.SWEDEN),
                 actual::add);
 
         // Assert
@@ -136,8 +136,8 @@ class DbNamesRepositoryTest {
                 new NamesRequest()
                         .basic(new BasicNameFacet().namePrefix("Alic"))
                         .metrics(new MetricsNameFacet())
-                        .demographics(Country.SWEDEN, new PopulationNameFacet())
-                        .demographics(Country.USA, new PopulationNameFacet()),
+                        .demographics(new PopulationNameFacet(), Country.SWEDEN)
+                        .demographics(new PopulationNameFacet(), Country.USA),
                 actual2::add);
 
         // Assert

@@ -29,6 +29,8 @@ public class SsaNameImporter extends AbstractNameImporter {
 
     public static final int BOOT_ORDER = 20;
 
+    private static final int COUNT = 250;
+
     public SsaNameImporter(
             @Autowired NamesRepository namesRepository,
             @Autowired UserRepository userRepository,
@@ -78,7 +80,7 @@ public class SsaNameImporter extends AbstractNameImporter {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
 
                     reader.lines()
-                            .limit(2 * 100)
+                            .limit(2 * COUNT)
                             .map(line -> Pattern.compile(",").split(line))
                             .filter(columns -> columns.length == 3)
                             .map(columns -> new FileEntry(
@@ -98,10 +100,10 @@ public class SsaNameImporter extends AbstractNameImporter {
             fileEntries.stream()
                     .collect(Collectors.groupingBy(fileEntry -> fileEntry.name))
                     .forEach((s, entries) -> {
-                        var malePercent = entries.stream().filter(fileEntry -> !fileEntry.isFemale).mapToDouble(fileEntry -> fileEntry.percentage).average().orElse(0.0);
-                        var femalePercent = entries.stream().filter(fileEntry -> fileEntry.isFemale).mapToDouble(fileEntry -> fileEntry.percentage).average().orElse(0.0);
+                        final var malePercent = entries.stream().filter(fileEntry -> !fileEntry.isFemale).mapToDouble(fileEntry -> fileEntry.percentage).average().orElse(0.0);
+                        final var femalePercent = entries.stream().filter(fileEntry -> fileEntry.isFemale).mapToDouble(fileEntry -> fileEntry.percentage).average().orElse(0.0);
 
-                        var firstName = entries.get(0);
+                        final var firstName = entries.get(0);
 
                         final var expectedPercentOfPopulation = 0.01 * (malePercent + femalePercent);
                         final var expectedPercentWomen = expectedPercentOfPopulation > 0 ? 0.01 * femalePercent / expectedPercentOfPopulation : null;

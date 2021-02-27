@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum Country {
     SWEDEN("se"),
+    NORWAY("no"),
     USA("us");
 
     private final String countryCode;

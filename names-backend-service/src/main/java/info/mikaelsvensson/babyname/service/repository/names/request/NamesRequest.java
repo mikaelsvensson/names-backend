@@ -33,11 +33,13 @@ public class NamesRequest {
         return this;
     }
 
-    public NamesRequest demographics(Country country, PopulationNameFacet demographics) {
+    public NamesRequest demographics(PopulationNameFacet demographics, Country... countries) {
         if (this.demographics == null) {
             this.demographics = new HashMap<>();
         }
-        this.demographics.put(country, demographics);
+        for (Country country : countries) {
+            this.demographics.put(country, demographics);
+        }
         return this;
     }
 

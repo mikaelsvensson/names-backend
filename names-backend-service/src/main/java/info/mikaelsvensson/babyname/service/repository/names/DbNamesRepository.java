@@ -327,8 +327,7 @@ public class DbNamesRepository implements NamesRepository {
         var res = new Name[]{null};
         final var request = new NamesRequest()
                 .basic(new BasicNameFacet().nameId(nameId))
-                .demographics(Country.SWEDEN, new PopulationNameFacet())
-                .demographics(Country.USA, new PopulationNameFacet())
+                .demographics(new PopulationNameFacet(), Country.values())
                 .metrics(new MetricsNameFacet());
         if (user != null) {
             request.votes(new VotesNameFacet()
@@ -346,7 +345,10 @@ public class DbNamesRepository implements NamesRepository {
     @Override
     public Optional<Name> getByName(String name) throws NameException {
         var res = new Name[]{null};
-        find(new NamesRequest().basic(new BasicNameFacet().nameExact(name)).demographics(Country.SWEDEN, new PopulationNameFacet()).demographics(Country.USA, new PopulationNameFacet()), n -> res[0] = n);
+        find(new NamesRequest()
+                        .basic(new BasicNameFacet().nameExact(name))
+                        .demographics(new PopulationNameFacet(), Country.values()),
+                n -> res[0] = n);
         if (res[0] != null) {
             return Optional.of(res[0]);
         } else {

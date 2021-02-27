@@ -11,8 +11,7 @@ import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
-import info.mikaelsvensson.babyname.service.util.nameprovider.ScbNameImporter;
-import info.mikaelsvensson.babyname.service.util.nameprovider.SsaNameImporter;
+import info.mikaelsvensson.babyname.service.util.nameprovider.AbstractNameImporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class Recommender {
@@ -31,21 +31,18 @@ public class Recommender {
     final private NamesRepository namesRepository;
     final private VotesRepository votesRepository;
     final private UserRepository userRepository;
-    final private ScbNameImporter scbNameImporter;
-    final private SsaNameImporter ssaNameImporter;
+    final private AbstractNameImporter[] nameImporters;
     final private boolean isUnigramConsidered;
 
     public Recommender(@Autowired NamesRepository namesRepository,
                        @Autowired VotesRepository votesRepository,
                        @Autowired UserRepository userRepository,
-                       @Autowired ScbNameImporter scbNameImporter,
-                       @Autowired SsaNameImporter ssaNameImporter,
+                       @Autowired AbstractNameImporter[] nameImporters,
                        @Value("${recommender.unigramConsidered}") boolean isUnigramConsidered) {
         this.namesRepository = namesRepository;
         this.votesRepository = votesRepository;
         this.userRepository = userRepository;
-        this.scbNameImporter = scbNameImporter;
-        this.ssaNameImporter = ssaNameImporter;
+        this.nameImporters = nameImporters;
         this.isUnigramConsidered = isUnigramConsidered;
     }
 
@@ -116,7 +113,7 @@ public class Recommender {
         if (baseRequest.demographics != null) {
             for (Country country : Country.values()) {
                 if (baseRequest.demographics.containsKey(country)) {
-                    request.demographics(country, baseRequest.demographics.get(country));
+                    request.demographics(baseRequest.demographics.get(country), country);
                 }
             }
         }
@@ -128,8 +125,7 @@ public class Recommender {
 
     private HashSet<String> getNameOwnerUserIds(User user) throws UserException {
         final var userIds = new HashSet<String>();
-        userIds.add(scbNameImporter.getUser().getId());
-        userIds.add(ssaNameImporter.getUser().getId());
+        Stream.of(nameImporters).forEach(importer -> userIds.add(importer.getUser().getId()));
 
         userIds.add(user.getId());
         if (user.getRelatedUserId() != null) {

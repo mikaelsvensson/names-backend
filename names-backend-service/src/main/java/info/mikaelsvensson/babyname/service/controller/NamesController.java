@@ -14,8 +14,7 @@ import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
 import info.mikaelsvensson.babyname.service.util.Recommender;
 import info.mikaelsvensson.babyname.service.util.RecommenderException;
 import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
-import info.mikaelsvensson.babyname.service.util.nameprovider.ScbNameImporter;
-import info.mikaelsvensson.babyname.service.util.nameprovider.SsaNameImporter;
+import info.mikaelsvensson.babyname.service.util.nameprovider.AbstractNameImporter;
 import info.mikaelsvensson.babyname.service.util.similarity.SimilarityCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("names")
@@ -54,10 +54,7 @@ public class NamesController {
     private SyllableUpdater syllableUpdater;
 
     @Autowired
-    private ScbNameImporter scbNameImporter;
-
-    @Autowired
-    private SsaNameImporter ssaNameImporter;
+    private AbstractNameImporter[] nameImporters;
 
     @Autowired
     private Recommender recommender;
@@ -81,8 +78,7 @@ public class NamesController {
                     .limit(limit + 1);
 
             final var userIds = new HashSet<String>();
-            userIds.add(scbNameImporter.getUser().getId());
-            userIds.add(ssaNameImporter.getUser().getId());
+            Stream.of(nameImporters).forEach(importer -> userIds.add(importer.getUser().getId()));
 
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
@@ -136,11 +132,10 @@ public class NamesController {
                 initRequestAttributeFilters(request, attributeFilterSpecs);
             }
 
-            if (request.demographics == null || !request.demographics.containsKey(Country.SWEDEN)) {
-                request.demographics(Country.SWEDEN, new PopulationNameFacet());
-            }
-            if (request.demographics == null || !request.demographics.containsKey(Country.USA)) {
-                request.demographics(Country.USA, new PopulationNameFacet());
+            for (Country country : Country.values()) {
+                if (request.demographics == null || !request.demographics.containsKey(country)) {
+                    request.demographics(new PopulationNameFacet(), country);
+                }
             }
 
             final var names = new ArrayList<Name>();
@@ -176,11 +171,11 @@ public class NamesController {
                             break;
                         case SCB_PERCENT_WOMEN:
                             demographicFacet.percentWomenFilter(filter);
-                            request.demographics(Country.SWEDEN, demographicFacet);
+                            request.demographics(demographicFacet, Country.SWEDEN);
                             break;
                         case SCB_PERCENT_OF_POPULATION:
                             demographicFacet.percentOfPopulationFilter(filter);
-                            request.demographics(Country.SWEDEN, demographicFacet);
+                            request.demographics(demographicFacet, Country.SWEDEN);
                             break;
                     }
                 });
@@ -259,7 +254,7 @@ public class NamesController {
                                          @RequestParam(name = "result-count", required = false, defaultValue = "10") int limit
     ) {
         try {
-            final var baseRequest = new NamesRequest().basic(new BasicNameFacet()).demographics(Country.SWEDEN, new PopulationNameFacet());
+            final var baseRequest = new NamesRequest().basic(new BasicNameFacet()).demographics(new PopulationNameFacet(), Country.values());
             if (attributeFilterSpecs != null) {
                 initRequestAttributeFilters(baseRequest, attributeFilterSpecs);
             }
