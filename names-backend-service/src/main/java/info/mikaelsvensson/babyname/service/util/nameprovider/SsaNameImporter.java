@@ -78,7 +78,6 @@ public class SsaNameImporter extends AbstractNameImporter {
             final var fileEntries = new ArrayList<FileEntry>();
             for (Resource database : databases) {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
-
                     reader.lines()
                             .limit(2 * COUNT)
                             .map(line -> Pattern.compile(",").split(line))
