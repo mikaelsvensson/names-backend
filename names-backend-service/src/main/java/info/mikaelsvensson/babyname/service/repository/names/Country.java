@@ -6,7 +6,8 @@ public enum Country {
     SWEDEN("se"),
     NORWAY("no"),
     USA("us"),
-    DENMARK("dk");
+    DENMARK("dk"),
+    FINLAND("fi");
 
     private final String countryCode;
 
