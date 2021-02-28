@@ -72,58 +72,60 @@ public class SsbNameImporter extends AbstractNameImporter {
             LOGGER.info("SSB data sync skipped.");
             return;
         }
-        scheduler.schedule(() -> {
-            LOGGER.info("SSB data sync started.");
-            final var fileEntries = new HashMap<String, NamePopularity>();
-            for (Resource database : new Resource[]{databaseBoys, databaseGirls}) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.ISO_8859_1))) {
-                    reader.lines()
-                            .map(line -> Pattern.compile(";").split(line))
-                            .filter(columns -> columns.length > 1)
-                            .filter(columns -> "\"Andel av f\u00F8dte (prosent)\"".equals(columns[0]))
-                            .forEach(columns -> {
-                                final var name = columns[1].substring(1, columns[1].length() - 1);
-                                fileEntries.putIfAbsent(name, new NamePopularity());
-                                final var percent = Stream.of(columns).skip(9).map(s -> ".".equals(s) ? "0" : s).mapToDouble(Double::valueOf).average().orElse(0.0) / 100.0;
-                                if (databaseGirls == database) {
-                                    fileEntries.get(name).percentWomen = percent;
-                                } else {
-                                    fileEntries.get(name).percentMen = percent;
-                                }
-                            });
-                } catch (IOException e) {
-                    LOGGER.error("Error when importing names from SSB file.", e);
-                }
+        scheduler.schedule(this::load, Instant.now().plusSeconds(1));
+    }
+
+    void load() {
+        LOGGER.info("SSB data sync started.");
+        final var fileEntries = new HashMap<String, NamePopularity>();
+        for (Resource database : new Resource[]{databaseBoys, databaseGirls}) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.ISO_8859_1))) {
+                reader.lines()
+                        .map(line -> Pattern.compile(";").split(line))
+                        .filter(columns -> columns.length > 1)
+                        .filter(columns -> "\"Andel av f\u00F8dte (prosent)\"".equals(columns[0]))
+                        .forEach(columns -> {
+                            final var name = columns[1].substring(1, columns[1].length() - 1);
+                            fileEntries.putIfAbsent(name, new NamePopularity());
+                            final var percent = Stream.of(columns).skip(9).map(s -> ".".equals(s) ? "0" : s).mapToDouble(Double::valueOf).average().orElse(0.0) / 100.0;
+                            if (databaseGirls == database) {
+                                fileEntries.get(name).percentWomen = percent;
+                            } else {
+                                fileEntries.get(name).percentMen = percent;
+                            }
+                        });
+            } catch (IOException e) {
+                LOGGER.error("Error when importing names from SSB file.", e);
             }
+        }
 
-            LOGGER.info("{} entries in raw data.", fileEntries.size());
+        LOGGER.info("{} entries in raw data.", fileEntries.size());
 
-            final var gcCounter = new MutableInt(0);
+        final var gcCounter = new MutableInt(0);
 
-            fileEntries.entrySet().stream()
-                    .sorted(Comparator.<Map.Entry<String, NamePopularity>>comparingDouble(o -> o.getValue().percentWomen + o.getValue().percentMen).reversed())
-                    .limit(COUNT)
-                    .forEach(entry -> {
-                        final var malePercent = entry.getValue().percentMen;
-                        final var femalePercent = entry.getValue().percentWomen;
+        fileEntries.entrySet().stream()
+                .sorted(Comparator.<Map.Entry<String, NamePopularity>>comparingDouble(o -> o.getValue().percentWomen + o.getValue().percentMen).reversed())
+                .limit(COUNT)
+                .forEach(entry -> {
+                    final var malePercent = entry.getValue().percentMen;
+                    final var femalePercent = entry.getValue().percentWomen;
 
-                        final var name = entry.getKey();
-                        final var totalPercent = femalePercent + malePercent;
+                    final var name = entry.getKey();
+                    final var totalPercent = femalePercent + malePercent;
 
-                        final var expectedPercentOfPopulation = totalPercent;
-                        final var expectedPercentWomen = totalPercent > 0 ? 1.0 * femalePercent / totalPercent : null;
+                    final var expectedPercentOfPopulation = totalPercent;
+                    final var expectedPercentWomen = totalPercent > 0 ? 1.0 * femalePercent / totalPercent : null;
 
-                        addName(name, expectedPercentOfPopulation, expectedPercentWomen, Country.NORWAY);
+                    addName(name, expectedPercentOfPopulation, expectedPercentWomen, Country.NORWAY);
 
-                        gcCounter.increment();
-                        if (gcCounter.intValue() % 1000 == 0) {
-                            LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
-                            System.gc();
-                        }
-                    });
+                    gcCounter.increment();
+                    if (gcCounter.intValue() % 1000 == 0) {
+                        LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
+                        System.gc();
+                    }
+                });
 
-            System.gc();
-            LOGGER.info("SSB data sync done.");
-        }, Instant.now().plusSeconds(1));
+        System.gc();
+        LOGGER.info("SSB data sync done.");
     }
 }
