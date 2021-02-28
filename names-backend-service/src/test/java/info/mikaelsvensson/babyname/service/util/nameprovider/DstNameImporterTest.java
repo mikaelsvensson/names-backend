@@ -39,7 +39,7 @@ class DstNameImporterTest {
         importer.load();
 
         verify(namesRepository, times(1)).setDemographicsProperties(eq(nameLouise), eq(Country.DENMARK), eq(new PopulationProperties(
-                (36 + 36 + 32 + 33 + 31 + 34 + 31 + 30 + 26 + 26 + 22 + 20 + 18 + 15 + 13 + 10 + 8 + 7 + 6 + 5) / 1000.0 / FILE_COUNT,
+                (36 + 36 + 32 + 33 + 31 + 34 + 31 + 30 + 26 + 26 + 22 + 20 + 18 + 15 + 14 + 13 + 12 + 10 + 8 + 7 + 6 + 5) / 1000.0 / FILE_COUNT,
                 1.0
         )));
     }
