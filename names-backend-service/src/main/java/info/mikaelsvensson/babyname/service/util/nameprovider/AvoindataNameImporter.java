@@ -69,59 +69,61 @@ public class AvoindataNameImporter extends AbstractNameImporter {
             LOGGER.info("Avoindata data sync skipped.");
             return;
         }
-        scheduler.schedule(() -> {
-            LOGGER.info("Avoindata data sync started.");
-            final var fileEntries = new HashMap<String, NamePopularity>();
-            for (Resource database : new Resource[]{databaseBoys, databaseGirls}) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.ISO_8859_1))) {
-                    reader.lines()
-                            .map(line -> Pattern.compile(";").split(line))
-                            .filter(columns -> columns.length == 2)
-                            .forEach(columns -> {
-                                final var name = columns[0];
-                                fileEntries.putIfAbsent(name, new NamePopularity());
-                                final var percent = Integer.parseInt(columns[1]);
-                                if (databaseGirls == database) {
-                                    fileEntries.get(name).countWomen = percent;
-                                } else {
-                                    fileEntries.get(name).countMen = percent;
-                                }
-                            });
-                } catch (IOException e) {
-                    LOGGER.error("Error when importing names from Avoindata file.", e);
-                }
+        scheduler.schedule(this::load, Instant.now().plusSeconds(1));
+    }
+
+    void load() {
+        LOGGER.info("Avoindata data sync started.");
+        final var fileEntries = new HashMap<String, NamePopularity>();
+        for (Resource database : new Resource[]{databaseBoys, databaseGirls}) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
+                reader.lines()
+                        .map(line -> Pattern.compile(";").split(line))
+                        .filter(columns -> columns.length == 2)
+                        .forEach(columns -> {
+                            final var name = columns[0];
+                            fileEntries.putIfAbsent(name, new NamePopularity());
+                            final var percent = Integer.parseInt(columns[1]);
+                            if (databaseGirls == database) {
+                                fileEntries.get(name).countWomen = percent;
+                            } else {
+                                fileEntries.get(name).countMen = percent;
+                            }
+                        });
+            } catch (IOException e) {
+                LOGGER.error("Error when importing names from Avoindata file.", e);
             }
+        }
 
-            LOGGER.info("{} entries in raw data.", fileEntries.size());
+        LOGGER.info("{} entries in raw data.", fileEntries.size());
 
-            final var totalPeopleCount = fileEntries.values().stream().mapToLong(fileEntry -> fileEntry.countWomen + fileEntry.countMen).sum();
+        final var totalPeopleCount = fileEntries.values().stream().mapToLong(fileEntry -> fileEntry.countWomen + fileEntry.countMen).sum();
 
-            final var gcCounter = new MutableInt(0);
+        final var gcCounter = new MutableInt(0);
 
-            fileEntries.entrySet().stream()
-                    .sorted(Comparator.<Map.Entry<String, NamePopularity>>comparingDouble(o -> o.getValue().countWomen + o.getValue().countMen).reversed())
-                    .limit(COUNT)
-                    .forEach(entry -> {
-                        final var malePercent = 1.0 * entry.getValue().countMen / totalPeopleCount;
-                        final var femalePercent = 1.0 * entry.getValue().countWomen / totalPeopleCount;
+        fileEntries.entrySet().stream()
+                .sorted(Comparator.<Map.Entry<String, NamePopularity>>comparingDouble(o -> o.getValue().countWomen + o.getValue().countMen).reversed())
+                .limit(COUNT)
+                .forEach(entry -> {
+                    final var malePercent = 1.0 * entry.getValue().countMen / totalPeopleCount;
+                    final var femalePercent = 1.0 * entry.getValue().countWomen / totalPeopleCount;
 
-                        final var name = entry.getKey();
-                        final var totalPercent = femalePercent + malePercent;
+                    final var name = entry.getKey();
+                    final var totalPercent = femalePercent + malePercent;
 
-                        final var expectedPercentOfPopulation = totalPercent;
-                        final var expectedPercentWomen = totalPercent > 0 ? 1.0 * femalePercent / totalPercent : null;
+                    final var expectedPercentOfPopulation = totalPercent;
+                    final var expectedPercentWomen = totalPercent > 0 ? 1.0 * femalePercent / totalPercent : null;
 
-                        addName(name, expectedPercentOfPopulation, expectedPercentWomen, Country.FINLAND);
+                    addName(name, expectedPercentOfPopulation, expectedPercentWomen, Country.FINLAND);
 
-                        gcCounter.increment();
-                        if (gcCounter.intValue() % 1000 == 0) {
-                            LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
-                            System.gc();
-                        }
-                    });
+                    gcCounter.increment();
+                    if (gcCounter.intValue() % 1000 == 0) {
+                        LOGGER.info("{} names processed. Time for garbage collection.", gcCounter.intValue());
+                        System.gc();
+                    }
+                });
 
-            System.gc();
-            LOGGER.info("Avoindata data sync done.");
-        }, Instant.now().plusSeconds(1));
+        System.gc();
+        LOGGER.info("Avoindata data sync done.");
     }
 }
