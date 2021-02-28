@@ -79,7 +79,7 @@ public class DstNameImporter extends AbstractNameImporter {
         LOGGER.info("DST data sync started.");
         final var fileEntries = new HashMap<String, NamePopularity>();
         for (Resource database : databases) {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.ISO_8859_1))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(database.getInputStream(), StandardCharsets.UTF_8))) {
                 final var raw = FileCopyUtils.copyToString(reader);
                 for (Pattern sectionPattern : new Pattern[]{patternGirlsSection, patternBoysSection}) {
                     final var sectionMatcher = sectionPattern.matcher(raw);

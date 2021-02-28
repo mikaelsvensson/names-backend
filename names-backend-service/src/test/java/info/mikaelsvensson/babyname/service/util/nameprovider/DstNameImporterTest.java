@@ -23,7 +23,8 @@ class DstNameImporterTest {
     private static final double FILE_COUNT = 35.0;
 
     @Test
-    void load() throws IOException, NameException {
+    void load_correctPercentAndEncoding() throws IOException, NameException {
+        // ARRANGE
         final var namesRepository = mock(NamesRepository.class);
         final var nameLouise = new Name("Louise", IdUtils.random());
         when(namesRepository.add(anyString(), nullable(User.class))).thenReturn(new Name("Test", IdUtils.random()));
@@ -36,11 +37,17 @@ class DstNameImporterTest {
                 ResourcePatternUtils.getResourcePatternResolver(new DefaultResourceLoader()).getResources("classpath:names/dk/*.html"),
                 mock(TaskScheduler.class)
         );
+
+        // ACT
         importer.load();
 
+        // ASSERT percent calculation
         verify(namesRepository, times(1)).setDemographicsProperties(eq(nameLouise), eq(Country.DENMARK), eq(new PopulationProperties(
                 (36 + 36 + 32 + 33 + 31 + 34 + 31 + 30 + 26 + 26 + 22 + 20 + 18 + 15 + 14 + 13 + 12 + 10 + 8 + 7 + 6 + 5) / 1000.0 / FILE_COUNT,
                 1.0
         )));
+
+        // ASSERT name with accented character is correctly read
+        verify(namesRepository, times(1)).add(eq("L\u00E6rke"), nullable(User.class));
     }
 }
