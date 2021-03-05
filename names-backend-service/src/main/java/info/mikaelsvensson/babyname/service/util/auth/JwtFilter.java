@@ -24,7 +24,10 @@ import java.util.Optional;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
-    private static final Logger LOGGER = LoggerFactory.getLogger(JwtFilter.class);
+//    private static final Logger LOGGER = LoggerFactory.getLogger(JwtFilter.class);
+
+    public static final String ROLE_USER = "USER";
+    public static final String ROLE_ADMIN = "ADMIN";
 
     private final AuthJwtService jwtService;
     private final String adminUsername;
@@ -52,15 +55,24 @@ public class JwtFilter extends OncePerRequestFilter {
         if (authHeader.startsWith("Bearer ")) {
             final var userId = jwtService.decode(authHeader.substring("Bearer ".length())).getName();
             metrics.logUniqueString(MetricEvent.ACTIVE_USER, userId);
-            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(new JwtUser(userId), null, Collections.singletonList(new SimpleGrantedAuthority("USER"))));
+            initAuthenticationContext(userId, ROLE_USER);
         } else if (authHeader.startsWith("Basic ")) {
             UsernamePasswordAuthenticationToken authRequest = new BasicAuthenticationConverter().convert(req);
             String password = authRequest.getCredentials().toString();
             String username = authRequest.getPrincipal().toString();
             if (username.equals(adminUsername) && password.equals(adminPassword)) {
-                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(new JwtUser(username), null, Collections.singletonList(new SimpleGrantedAuthority("ADMIN"))));
+                initAuthenticationContext(username, ROLE_ADMIN);
             }
         }
         chain.doFilter(req, res);
+    }
+
+    private void initAuthenticationContext(String user, String role) {
+        final var roles = Collections.singletonList(new SimpleGrantedAuthority(role));
+        final var authentication = new UsernamePasswordAuthenticationToken(
+                new JwtUser(user),
+                null,
+                roles);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }

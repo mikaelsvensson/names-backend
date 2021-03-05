@@ -1,5 +1,7 @@
 package info.mikaelsvensson.babyname.service;
 
+import info.mikaelsvensson.babyname.service.util.ResponseCodeMetricsInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.BufferedImageHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -7,6 +9,7 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
@@ -15,6 +18,10 @@ import java.util.List;
 @EnableWebMvc
 @EnableScheduling
 public class WebConfig implements WebMvcConfigurer {
+
+    @Autowired
+    private ResponseCodeMetricsInterceptor responseCodeMetricsInterceptor;
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**");
@@ -25,5 +32,9 @@ public class WebConfig implements WebMvcConfigurer {
         converters.add(new MappingJackson2HttpMessageConverter());
         converters.add(new BufferedImageHttpMessageConverter());
     }
-}
 
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(responseCodeMetricsInterceptor);
+    }
+}

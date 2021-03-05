@@ -6,5 +6,10 @@ public enum MetricEvent {
     USER_ADDED,
     RELATIONSHIP_ADDED,
     ACTIVE_USER,
-    VOTE
+    VOTE,
+    HTTP_OK,
+    HTTP_CLIENT_ERROR,
+    HTTP_SERVER_ERROR,
+    HTTP_ADMIN,
+    HTTP_OTHER
 }

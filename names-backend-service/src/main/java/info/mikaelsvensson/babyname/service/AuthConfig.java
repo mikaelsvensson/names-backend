@@ -11,6 +11,9 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
+import static info.mikaelsvensson.babyname.service.util.auth.JwtFilter.ROLE_ADMIN;
+import static info.mikaelsvensson.babyname.service.util.auth.JwtFilter.ROLE_USER;
+
 @EnableWebSecurity
 public class AuthConfig extends WebSecurityConfigurerAdapter {
 
@@ -39,8 +42,8 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.POST, "/actions/**/invocation").permitAll()
                 .antMatchers(HttpMethod.GET, "/names").permitAll()
                 .antMatchers(HttpMethod.GET, "/names/**").permitAll()
-                .antMatchers("/admin/**").hasAuthority("ADMIN")
-                .anyRequest().hasAuthority("USER").and()
+                .antMatchers("/admin/**").hasAuthority(ROLE_ADMIN)
+                .anyRequest().hasAuthority(ROLE_USER).and()
                 .addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
     }
