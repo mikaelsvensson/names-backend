@@ -155,8 +155,8 @@ public class DbNamesRepository implements NamesRepository {
                 }
                 if (request.votes != null && request.votes.returned) {
                     currentName.setVotes(new VotesProperties(
-                            getDouble(rs, "votes__self_vote_value").map(Double::intValue).orElse(null),
-                            getDouble(rs, "votes__partner_vote_value").map(Double::intValue).orElse(null)
+                            request.votes.selfUserId != null ? getDouble(rs, "votes__self_vote_value").map(Double::intValue).orElse(null) : null,
+                            request.votes.partnerUserId != null ? getDouble(rs, "votes__partner_vote_value").map(Double::intValue).orElse(null) : null
                     ));
                 }
 
@@ -289,9 +289,10 @@ public class DbNamesRepository implements NamesRepository {
                                     "votes_{0}.value {1}",
                                     userId,
                                     switch (filterVote.getCondition()) {
-                                        case NOT_YET_VOTED -> " IS NULL";
-                                        case ANY_VOTE -> "      IS NOT NULL";
-                                        case POSITIVE_VOTE -> " > 0";
+                                        case NOT_YET_VOTED -> "    IS NULL";
+                                        case ANY_VOTE -> "         IS NOT NULL";
+                                        case POSITIVE_VOTE -> "    > 0";
+                                        case NOT_NEUTRAL_VOTE -> " != 0";
                                     }))
                             .collect(Collectors.joining(" OR "));
 

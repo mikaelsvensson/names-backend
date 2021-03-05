@@ -29,18 +29,15 @@ public class Recommender {
     private static final Logger LOGGER = LoggerFactory.getLogger(Recommender.class);
 
     final private NamesRepository namesRepository;
-    final private VotesRepository votesRepository;
     final private UserRepository userRepository;
     final private AbstractNameImporter[] nameImporters;
     final private boolean isUnigramConsidered;
 
     public Recommender(@Autowired NamesRepository namesRepository,
-                       @Autowired VotesRepository votesRepository,
                        @Autowired UserRepository userRepository,
                        @Autowired AbstractNameImporter[] nameImporters,
                        @Value("${recommender.unigramConsidered}") boolean isUnigramConsidered) {
         this.namesRepository = namesRepository;
-        this.votesRepository = votesRepository;
         this.userRepository = userRepository;
         this.nameImporters = nameImporters;
         this.isUnigramConsidered = isUnigramConsidered;
@@ -62,11 +59,11 @@ public class Recommender {
 
     public List<Name> getRecommendation(User user, NamesRequest baseRequest) throws RecommenderException {
         try {
-            final var ngramScores = this.getNgramScores(user);
+            final var ngramScores = this.getNgramScores(user, baseRequest);
 
             final var namesToRecommend = new TreeSet<>(Comparator.comparingDouble(NameScore::getScore).reversed());
 
-            getNamesToScore(user, baseRequest, name -> {
+            getNamesToScore(user, baseRequest, FilterVoteCondition.NOT_YET_VOTED, name -> {
                 final var score = this.getScore(name.getName(), ngramScores);
 
                 final var nameScore = new NameScore(name, score);
@@ -92,21 +89,20 @@ public class Recommender {
                         return nameScore.name;
                     })
                     .collect(Collectors.toList());
-        } catch (VoteException | UserException | NameException e) {
+        } catch (UserException | NameException e) {
             throw new RecommenderException(e);
         } catch (NoSuchElementException e) {
             return Collections.emptyList();
         }
     }
 
-    private void getNamesToScore(User user, NamesRequest baseRequest, Consumer<Name> nameConsumer) throws NameException, UserException {
+    private void getNamesToScore(User user, NamesRequest baseRequest, FilterVoteCondition filterVoteCondition, Consumer<Name> nameConsumer) throws NameException, UserException {
         final var request = new NamesRequest()
                 .basic(new BasicNameFacet()
                         .nameOwnerUserIds(getNameOwnerUserIds(user)))
                 .votes(new VotesNameFacet()
                         .selfUserId(user.getId())
-                        .partnerUserId(user.getRelatedUserId())
-                        .filterVotes(Collections.singleton(new FilterVote(Collections.singleton(user.getId()), FilterVoteCondition.NOT_YET_VOTED))))
+                        .filterVotes(Collections.singleton(new FilterVote(Collections.singleton(user.getId()), filterVoteCondition))))
                 .limit(Integer.MAX_VALUE)
                 .offset(0);
 
@@ -141,27 +137,28 @@ public class Recommender {
                 .sum();
     }
 
-    private Map<String, Integer> getNgramScores(User user) throws VoteException, NameException {
-        final var votes = this.votesRepository.all(user);
-
-        final var allNames = namesRepository.allNames();
-
-        LOGGER.info("Got {} names and {} votes.", allNames.size(), votes.size());
-
+    private Map<String, Integer> getNgramScores(User user, NamesRequest baseRequest) throws NameException, UserException {
         final var counts = new HashMap<String, Integer>();
-        final var voteByName = votes.stream()
-                .filter(vote -> vote.getValue() != 0)
-                .map(vote -> Map.entry(allNames.get(vote.getNameId()), vote.getValue()))
-                .collect(Collectors.toList());
+
+        final var voteByName = new HashMap<String, Long>();
+        getNamesToScore(
+                user,
+                baseRequest,
+                FilterVoteCondition.NOT_NEUTRAL_VOTE,
+                name -> voteByName.put(
+                        name.getName().toLowerCase(),
+                        name.getVotes().getSelfVoteValue().longValue()
+                )
+        );
 
         final var voteSumMax = voteByName.size() * 100;
         final var voteSumMin = voteByName.size() * -100;
-        final var voteSum = voteByName.stream().mapToLong(Map.Entry::getValue).sum();
+        final var voteSum = voteByName.values().stream().mapToLong(Long::longValue).sum();
         final var voteAverageNormalized = 1.0 * (voteSum - voteSumMin) / (voteSumMax - voteSumMin);
         final var voteAveragePoints = (int) (-100.0 + 200.0 * voteAverageNormalized);
 
-        for (final Map.Entry<String, Long> entry : voteByName) {
-            final var name = entry.getKey().toLowerCase();
+        for (final var entry : voteByName.entrySet()) {
+            final var name = entry.getKey();
             final var votePoints = entry.getValue().intValue();
             ngrams(name).forEach(nameSubstring -> {
                 counts.put(

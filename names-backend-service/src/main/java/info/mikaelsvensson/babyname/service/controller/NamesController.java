@@ -257,7 +257,7 @@ public class NamesController {
                                          @RequestParam(name = "result-count", required = false, defaultValue = "10") int limit
     ) {
         try {
-            final var baseRequest = new NamesRequest().basic(new BasicNameFacet()).demographics(new PopulationNameFacet(), Country.values());
+            final var baseRequest = new NamesRequest().basic(new BasicNameFacet()).demographics(new PopulationNameFacet(), Country.SWEDEN);
             if (attributeFilterSpecs != null) {
                 initRequestAttributeFilters(baseRequest, attributeFilterSpecs);
             }
