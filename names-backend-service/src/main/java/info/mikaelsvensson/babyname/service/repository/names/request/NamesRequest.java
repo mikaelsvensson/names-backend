@@ -1,6 +1,8 @@
 package info.mikaelsvensson.babyname.service.repository.names.request;
 
 import info.mikaelsvensson.babyname.service.repository.names.Country;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +14,8 @@ public class NamesRequest {
     public MetricsNameFacet metrics;
     public Map<Country, PopulationNameFacet> demographics;
     public VotesNameFacet votes;
+    public SortOrder sortOrder;
+    public String sortOrderParam;
 
     public NamesRequest offset(int offset) {
         this.offset = offset;
@@ -46,5 +50,18 @@ public class NamesRequest {
     public NamesRequest votes(VotesNameFacet votes) {
         this.votes = votes;
         return this;
+    }
+
+    public NamesRequest sortOrder(SortOrder order, String param) {
+        try {
+            this.sortOrder = order;
+            this.sortOrderParam = switch (order) {
+                case NAME -> null;
+                case RANDOM -> Long.toString(Long.parseLong(param));
+            };
+            return this;
+        } catch (IllegalArgumentException e) {
+            throw new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+        }
     }
 }

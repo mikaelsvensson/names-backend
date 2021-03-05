@@ -7,6 +7,7 @@ import info.mikaelsvensson.babyname.service.model.name.PopulationProperties;
 import info.mikaelsvensson.babyname.service.model.name.VotesProperties;
 import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -300,6 +301,19 @@ public class DbNamesRepository implements NamesRepository {
 
             params.put("limit", request.limit);
             params.put("offset", request.offset);
+
+            final var orderByType = Optional.ofNullable(request.sortOrder).orElse(SortOrder.NAME);
+            final var orderBy = switch (orderByType) {
+                case RANDOM -> MessageFormat.format(
+                        "TRANSLATE(n.id, ''{0}'', ''{1}'')",
+                        StringUtils.join(IdUtils.CHARS, ""),
+                        IdUtils.randomAlphabet(
+                                Long.parseLong(request.sortOrderParam) > 0
+                                        ? Long.parseLong(request.sortOrderParam)
+                                        : -1));
+                case NAME -> "n.name";
+            };
+
             final var query = "" +
                     "\n SELECT " +
                     "\n     " + String.join(", ", sqlSelect) +
@@ -308,7 +322,7 @@ public class DbNamesRepository implements NamesRepository {
                     "\n WHERE " +
                     "\n     " + String.join(" AND \n     ", sqlWhere) +
                     "\n ORDER BY " +
-                    "\n    n.name " +
+                    "\n    " + orderBy + " " +
                     "\n LIMIT " +
                     "\n    :limit " +
                     "\n OFFSET " +

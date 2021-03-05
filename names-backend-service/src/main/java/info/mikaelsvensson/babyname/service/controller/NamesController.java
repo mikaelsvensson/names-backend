@@ -69,12 +69,15 @@ public class NamesController {
             @RequestParam(name = "votes-filter", required = false) VotesFilter votesFilter,
             @RequestParam(name = "attribute-filter", required = false) Set<String> attributeFilterSpecs,
             @RequestParam(name = "result-offset", required = false, defaultValue = "0") int offset,
-            @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit
+            @RequestParam(name = "result-count", required = false, defaultValue = "500") int limit,
+            @RequestParam(name = "sort-order", required = false, defaultValue = "NAME") String sortOrderSpec
     ) {
         try {
+            final var strings = sortOrderSpec.split(":");
             final var request = new NamesRequest()
                     .basic(new BasicNameFacet())
                     .offset(offset)
+                    .sortOrder(SortOrder.valueOf(strings[0]), strings.length > 1 ? strings[1] : null)
                     .limit(limit + 1);
 
             final var userIds = new HashSet<String>();

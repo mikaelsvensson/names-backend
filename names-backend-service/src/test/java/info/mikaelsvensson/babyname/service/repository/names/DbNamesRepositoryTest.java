@@ -5,10 +5,7 @@ import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.name.MetricsProperties;
 import info.mikaelsvensson.babyname.service.model.name.Name;
 import info.mikaelsvensson.babyname.service.model.name.PopulationProperties;
-import info.mikaelsvensson.babyname.service.repository.names.request.BasicNameFacet;
-import info.mikaelsvensson.babyname.service.repository.names.request.MetricsNameFacet;
-import info.mikaelsvensson.babyname.service.repository.names.request.NamesRequest;
-import info.mikaelsvensson.babyname.service.repository.names.request.PopulationNameFacet;
+import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.repository.users.DbUserRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
@@ -20,10 +17,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -234,5 +230,53 @@ class DbNamesRepositoryTest {
         final var searchResult3 = new ArrayList<Name>();
         namesRepository.all(new NamesRequest().basic(new BasicNameFacet().nameOwnerUserIds(Set.of(user2.getId()))), searchResult3::add);
         assertThat(searchResult3.stream().map(Name::getName).sorted().collect(Collectors.joining(","))).isEqualTo("Alan,Alice");
+    }
+
+    @Test
+    void all_random() throws NameException {
+        // ARRANGE
+        final var seeds = new String[]{
+                "34567894",
+                "06534",
+                "668509",
+                "33589",
+                "7765765668"
+        };
+        final var names = new String[]{
+                "Alice",
+                "Bob",
+                "Carol",
+                "Dave",
+                "Emily"
+        };
+        for (String name : names) {
+            namesRepository.add(name, user1);
+        }
+
+        final var allResults = new HashSet<String>();
+        for (String seed : seeds) {
+            // ACT: Search for all names
+            final var searchResult1 = new ArrayList<Name>();
+            namesRepository.all(new NamesRequest().basic(new BasicNameFacet()).sortOrder(SortOrder.RANDOM, seed), searchResult1::add);
+
+            // ASSERT: All names should be returned in some (unknown) order
+            assertThat(searchResult1).hasSize(names.length);
+            assertThat(Stream.of(names).allMatch(expectedName -> searchResult1.stream().map(Name::getName).anyMatch(actualName -> actualName.equals(expectedName))));
+
+            // ARRANGE: Keep track of which order the names were returned in
+            allResults.add(searchResult1.stream().map(Name::getName).collect(Collectors.joining()));
+
+            // ACT: Search for a subset of the previous query
+            final var searchResult2 = new ArrayList<Name>();
+            namesRepository.all(new NamesRequest().basic(new BasicNameFacet()).sortOrder(SortOrder.RANDOM, seed).offset(2).limit(2), searchResult2::add);
+
+            // ASSERT: Second result is a subset of the first result
+            assertThat(searchResult2).hasSize(2);
+            assertThat(searchResult2.get(0).getName()).isEqualTo(searchResult1.get(2).getName());
+            assertThat(searchResult2.get(1).getName()).isEqualTo(searchResult1.get(3).getName());
+        }
+
+        // ASSERT: All seeds returned names in different orders
+        assertThat(allResults).hasSize(seeds.length);
     }
 }
