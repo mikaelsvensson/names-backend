@@ -83,21 +83,20 @@ class DbUserRepositoryTest {
 
         final Function<String, Integer> tableRowCount = (String table) -> jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, new MapSqlParameterSource(), Integer.class);
 
-        // ASSERT pre-conditions
-        assertThat(tableRowCount.apply("users")).isEqualTo(4);
-        assertThat(tableRowCount.apply("votes")).isEqualTo(3);
-        assertThat(tableRowCount.apply("names")).isEqualTo(2);
-        assertThat(tableRowCount.apply("relationships")).isEqualTo(2);
-        assertThat(tableRowCount.apply("actions")).isEqualTo(1);
+        var userCountBefore = tableRowCount.apply("users");
+        var voteCountBefore = tableRowCount.apply("votes");
+        var nameCountBefore = tableRowCount.apply("names");
+        var relationshipCountBefore = tableRowCount.apply("relationships");
+        var actionCountBefore = tableRowCount.apply("actions");
 
         // ACT
         userRepository.delete(user3);
 
         // ASSERT
-        assertThat(tableRowCount.apply("users")).isEqualTo(3);
-        assertThat(tableRowCount.apply("votes")).isEqualTo(1);
-        assertThat(tableRowCount.apply("names")).isEqualTo(2);
-        assertThat(tableRowCount.apply("relationships")).isEqualTo(0);
-        assertThat(tableRowCount.apply("actions")).isEqualTo(0);
+        assertThat(tableRowCount.apply("users")).isEqualTo(userCountBefore - 1);
+        assertThat(tableRowCount.apply("votes")).isEqualTo(voteCountBefore - 2);
+        assertThat(tableRowCount.apply("names")).isEqualTo(nameCountBefore);
+        assertThat(tableRowCount.apply("relationships")).isEqualTo(relationshipCountBefore - 2);
+        assertThat(tableRowCount.apply("actions")).isEqualTo(actionCountBefore - 1);
     }
 }
