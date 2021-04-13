@@ -348,3 +348,99 @@ databaseChangeLog:
             referencedTableName: names
             referencedColumnNames: id
             validate:  true
+
+  - changeSet:
+      id: 009_configure_cascading_deletes
+      author: mikael.svensson
+      changes:
+        # Configure cascading deletes for NAME OWNERSHIP
+        - dropForeignKeyConstraint:
+            baseTableName: name_owners
+            constraintName: fk_nameowners_userid
+        - addForeignKeyConstraint:
+            baseTableName:  name_owners
+            baseColumnNames:  user_id
+            constraintName:  fk_nameowners_userid
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: users
+            referencedColumnNames: id
+            validate:  true
+        - dropForeignKeyConstraint:
+            baseTableName: name_owners
+            constraintName: fk_nameowners_nameid
+        - addForeignKeyConstraint:
+            baseTableName:  name_owners
+            baseColumnNames:  name_id
+            constraintName:  fk_nameowners_nameid
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: names
+            referencedColumnNames: id
+            validate:  true
+
+        # Configure cascading deletes for VOTES
+        - dropForeignKeyConstraint:
+            baseTableName: votes
+            constraintName: fk_votes_userid
+        - addForeignKeyConstraint:
+            baseTableName:  votes
+            baseColumnNames:  user_id
+            constraintName:  fk_votes_userid
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: users
+            referencedColumnNames: id
+            validate:  true
+        - dropForeignKeyConstraint:
+            baseTableName: votes
+            constraintName: fk_votes_nameid
+        - addForeignKeyConstraint:
+            baseTableName:  votes
+            baseColumnNames:  name_id
+            constraintName:  fk_votes_nameid
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: names
+            referencedColumnNames: id
+            validate:  true
+
+        # Configure cascading deletes for RELATIONSHIPS
+        - dropForeignKeyConstraint:
+            baseTableName: relationships
+            constraintName: fk_relationships_userid
+        - addForeignKeyConstraint:
+            baseTableName:  relationships
+            baseColumnNames:  user_id
+            constraintName:  fk_relationships_userid
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: users
+            referencedColumnNames: id
+            validate:  true
+        - dropForeignKeyConstraint:
+            baseTableName: relationships
+            constraintName: fk_relationships_relateduserid
+        - addForeignKeyConstraint:
+            baseTableName:  relationships
+            baseColumnNames:  related_user_id
+            constraintName:  fk_relationships_relateduserid
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: users
+            referencedColumnNames: id
+            validate:  true
+
+        # Configure cascading deletes for ACTIONS
+        - dropForeignKeyConstraint:
+            baseTableName: actions
+            constraintName: fk_actions_createdby
+        - addForeignKeyConstraint:
+            baseTableName:  actions
+            baseColumnNames:  created_by
+            constraintName:  fk_actions_createdby
+            onDelete:  CASCADE
+            onUpdate:  CASCADE
+            referencedTableName: users
+            referencedColumnNames: id
+            validate:  true

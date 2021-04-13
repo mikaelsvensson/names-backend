@@ -115,6 +115,20 @@ public class DbUserRepository implements UserRepository {
         }
     }
 
+    @Override
+    public void delete(User user) throws UserException {
+        try {
+            namedParameterJdbcTemplate.update(
+                    "DELETE FROM users WHERE id = :id",
+                    Map.of(
+                            "id", user.getId()
+                    ));
+            metrics.logEvent(MetricEvent.USER_DELETED);
+        } catch (DataAccessException e) {
+            throw new UserException(e.getMessage());
+        }
+    }
+
     public static User mapper(ResultSet resultSet, int index) throws SQLException {
         final var providerData = Optional.ofNullable(resultSet.getString("system_name")).orElse(UserProvider.ANONYMOUS.name().toLowerCase() + ":");
         final var matcher = Pattern.compile("^((?<key>[a-z]+):)?(?<value>.*)$").matcher(providerData);

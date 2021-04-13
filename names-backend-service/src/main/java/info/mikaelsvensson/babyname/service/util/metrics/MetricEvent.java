@@ -4,6 +4,7 @@ public enum MetricEvent {
     EMAIL_SENT,
     LOG_IN,
     USER_ADDED,
+    USER_DELETED,
     RELATIONSHIP_ADDED,
     ACTIVE_USER,
     VOTE,

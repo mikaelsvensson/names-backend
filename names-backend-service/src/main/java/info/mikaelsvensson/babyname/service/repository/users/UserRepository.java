@@ -17,4 +17,6 @@ public interface UserRepository {
     User get(String userId) throws UserException;
 
     User getByProvider(UserProvider provider, String providerValue) throws UserException;
+
+    void delete(User user) throws UserException;
 }
