@@ -7,6 +7,7 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import info.mikaelsvensson.babyname.service.model.Action;
 import info.mikaelsvensson.babyname.service.model.ActionStatus;
+import info.mikaelsvensson.babyname.service.model.ActionType;
 import info.mikaelsvensson.babyname.service.repository.actions.*;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
 import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipsRepository;
@@ -89,6 +90,8 @@ public class ActionsController {
             try {
                 return switch (action.getType()) {
                     case ADD_RELATIONSHIP -> handleAddRelationship(authentication, action);
+                    case DELETE_DATA_REQUEST_STATUS -> handleDeleteDataRequestStatus(action);
+                    case DELETE_DATA_CONFIRMATION -> handleDeleteDataConfirmation(action);
                     case VERIFY_EMAIL -> handleVerifyEmail(action);
                 };
             } catch (RelationshipException | UserException | ActionException e) {
@@ -101,6 +104,27 @@ public class ActionsController {
         } catch (ActionException e) {
             LOGGER.warn("Could not perform action.", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    private Action handleDeleteDataConfirmation(Action action) {
+        try {
+            final var sourceUserId = action.getCreatedBy();
+            LOGGER.info("User {} requested to be deleted from the system.", sourceUserId);
+            userRepository.delete(userRepository.get(sourceUserId));
+            LOGGER.info("User {} was deleted from the system.", sourceUserId);
+            return new Action(null, ActionType.DELETE_DATA_CONFIRMATION, sourceUserId, ActionStatus.DONE, null);
+        } catch (UserException e) {
+            LOGGER.warn("Could not delete user.", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    private Action handleDeleteDataRequestStatus(Action action) {
+        try {
+            return actionsRepository.get(action.getId());
+        } catch (ActionException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }
     }
 

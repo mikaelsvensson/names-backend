@@ -13,6 +13,8 @@ jwt:
 
 facebook:
   secret: "SECRET"
+  deleteDataCallbackUrlTemplate: "https://example.com/profile/delete-facebook-data-request/{actionId}"
+  deleteDataStatusUrlTemplate: "https://example.com/action/{actionId}"
 
 admin:
   testMail:
@@ -24,3 +26,15 @@ admin:
 recommender:
   unigramConsidered: true
 
+scbImporter:
+  onStart: false
+ssbImporter:
+  onStart: false
+ssaImporter:
+  onStart: false
+dstImporter:
+  onStart: false
+avoindataImporter:
+  onStart: false
+syllableUpdater:
+  onStart: false

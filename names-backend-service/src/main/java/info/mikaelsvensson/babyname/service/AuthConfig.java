@@ -42,6 +42,8 @@ public class AuthConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(HttpMethod.POST, "/actions/**/invocation").permitAll()
                 .antMatchers(HttpMethod.GET, "/names").permitAll()
                 .antMatchers(HttpMethod.GET, "/names/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/profile/delete-facebook-data-request").permitAll()
+                .antMatchers(HttpMethod.GET, "/profile/delete-facebook-data-request/**").permitAll()
                 .antMatchers("/admin/**").hasAuthority(ROLE_ADMIN)
                 .anyRequest().hasAuthority(ROLE_USER).and()
                 .addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
