@@ -53,8 +53,8 @@ class ProfileControllerTest {
         // ACT by requesting data-deletion process to be started
         final var requestDeletionResponseRaw = mockMvc.perform(
                 post("/profile/delete-facebook-data-request")
-                        .content(objectMapper.writeValueAsString(Map.of("signed_request", facebookAuthenticator.getToken("alice"))))
-                        .contentType(MediaType.APPLICATION_JSON))
+                        .content("signed_request=" + facebookAuthenticator.getToken("alice"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
