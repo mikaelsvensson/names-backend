@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -71,8 +72,11 @@ public class ProfileController {
         }
     }
 
-    @PostMapping("delete-facebook-data-request")
-    public FacebookDeleteDataResponse deleteFacebookData(@RequestBody FacebookDeleteDataRequest request) {
+    @PostMapping(
+            path = "delete-facebook-data-request",
+            consumes = {MediaType.APPLICATION_FORM_URLENCODED_VALUE}
+    )
+    public FacebookDeleteDataResponse deleteFacebookData(FacebookDeleteDataRequest request) {
         try {
             final var facebookUserId = facebookAuthenticator.getId(request.signed_request);
             LOGGER.info("Facebook requested that data be deleted for a user.");
@@ -91,7 +95,7 @@ public class ProfileController {
                     Map.of("confirmActionId", confirmAction.getId()),
                     ActionStatus.PENDING);
 
-            LOGGER.info("Created two actions for completing the deletion process. Check status action: {}. Confirm deletion action: {}", statusAction.getId(), confirmAction.getId());
+            LOGGER.info("Created two actions for completing the deletion process. Check status action: {}. Confirm deletion action: {}.", statusAction.getId(), confirmAction.getId());
 
             return new FacebookDeleteDataResponse(facebookDeleteDataCallbackUrlTemplate.replace("{actionId}", statusAction.getId()), statusAction.getId());
         } catch (UserAuthenticatorException | UserException | ActionException e) {
