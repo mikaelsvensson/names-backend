@@ -3,6 +3,9 @@ package info.mikaelsvensson.babyname.service.controller;
 public class AuthTokenResponse {
     private String token;
 
+    public AuthTokenResponse() {
+    }
+
     public AuthTokenResponse(String token) {
         this.token = token;
     }

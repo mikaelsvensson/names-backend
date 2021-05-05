@@ -38,3 +38,6 @@ avoindataImporter:
   onStart: false
 syllableUpdater:
   onStart: false
+
+anonymousAuthenticator:
+  userLimit: 10

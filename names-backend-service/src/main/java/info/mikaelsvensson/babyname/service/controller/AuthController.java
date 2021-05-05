@@ -33,6 +33,9 @@ public class AuthController {
     private EmailAuthenticator emailAuthenticator;
 
     @Autowired
+    private AnonymousAuthenticator anonymousAuthenticator;
+
+    @Autowired
     private Metrics metrics;
 
 //    @PostConstruct
@@ -51,7 +54,8 @@ public class AuthController {
     public AuthTokenResponse auth(@RequestBody AuthRequest request) {
         try {
             var authenticator = switch (request.provider) {
-                case INTERNAL, ANONYMOUS -> throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, "Unsupported provider");
+                case INTERNAL -> throw new HttpClientErrorException(HttpStatus.BAD_REQUEST, "Unsupported provider");
+                case ANONYMOUS -> anonymousAuthenticator;
                 case FACEBOOK -> facebookAuthenticator;
                 case EMAIL -> emailAuthenticator;
             };

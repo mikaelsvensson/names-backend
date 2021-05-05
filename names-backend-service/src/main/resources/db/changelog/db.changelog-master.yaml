@@ -444,3 +444,31 @@ databaseChangeLog:
             referencedTableName: users
             referencedColumnNames: id
             validate:  true
+
+  #
+  # Change set 10: Add table for anonymous users
+  #
+  - changeSet:
+      id: 010_anonymous_authenticator
+      author: mikael.svensson
+      changes:
+        - createTable:
+            tableName: anonymousauthenticator_identifiers
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_anonymousauthenticatoridentifiers
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: used_at
+                  type: bigint
+                  constraints:
+                    nullable: false

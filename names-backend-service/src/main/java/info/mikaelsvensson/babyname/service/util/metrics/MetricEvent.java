@@ -12,5 +12,6 @@ public enum MetricEvent {
     HTTP_CLIENT_ERROR,
     HTTP_SERVER_ERROR,
     HTTP_ADMIN,
-    HTTP_OTHER
+    HTTP_OTHER,
+    ANONYMOUS_USER_CREATED
 }
