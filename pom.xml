@@ -14,8 +14,17 @@
 	<name>names-backend</name>
 	<packaging>pom</packaging>
 
-	<modules>
-		<module>names-backend-service</module>
-	</modules>
+	<properties>
+		<java.version>14</java.version>
+		<maven.compiler.source>14</maven.compiler.source>
+		<maven.compiler.target>14</maven.compiler.target>
+	</properties>
 
+	<modules>
+		<module>names-backend-core</module>
+		<module>names-backend-repository-rdms</module>
+		<module>names-backend-service</module>
+        <module>names-backend-importer</module>
+		<module>names-backend-repository-firestore</module>
+	</modules>
 </project>

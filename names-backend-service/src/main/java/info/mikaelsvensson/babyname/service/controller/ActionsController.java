@@ -14,6 +14,8 @@ import info.mikaelsvensson.babyname.service.repository.relationships.Relationshi
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.util.auth.EmailAuthenticator;
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
+import info.mikaelsvensson.babyname.service.util.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,6 +52,9 @@ public class ActionsController {
 
     @Value("${actions.qrUrlTemplate}")
     private String qrUrlTemplate;
+
+    @Autowired
+    private Metrics metrics;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -150,6 +155,7 @@ public class ActionsController {
         relationshipsRepository.connect(
                 userRepository.get(sourceUserId),
                 userRepository.get(userId));
+        metrics.logEvent(MetricEvent.RELATIONSHIP_ADDED);
         actionsRepository.setStatus(action, ActionStatus.DONE);
         return actionsRepository.get(action.getId());
     }

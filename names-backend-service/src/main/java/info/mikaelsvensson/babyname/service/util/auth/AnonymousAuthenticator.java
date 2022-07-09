@@ -1,6 +1,5 @@
 package info.mikaelsvensson.babyname.service.util.auth;
 
-import info.mikaelsvensson.babyname.service.repository.actions.DbActionsRepository;
 import info.mikaelsvensson.babyname.service.repository.anonymousauthenticator.AnonymousAuthenticatorException;
 import info.mikaelsvensson.babyname.service.repository.anonymousauthenticator.AnonymousAuthenticatorRepository;
 import org.slf4j.Logger;
@@ -12,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AnonymousAuthenticator implements UserAuthenticator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DbActionsRepository.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AnonymousAuthenticator.class);
 
     private final AnonymousAuthenticatorRepository repository;
     private final long userLimit;

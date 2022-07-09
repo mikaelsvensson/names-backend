@@ -1,4 +1,7 @@
 /.idea/
 /names-backend-service/target/
+/names-backend-core/target/
+/names-backend-importer/target/
+/names-backend-repository-rdms/target/
 *.iml
 /names-backend-service/application*.yaml

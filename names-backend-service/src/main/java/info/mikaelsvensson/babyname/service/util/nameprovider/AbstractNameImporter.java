@@ -8,6 +8,7 @@ import info.mikaelsvensson.babyname.service.repository.names.NameException;
 import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
+import info.mikaelsvensson.babyname.service.util.metrics.MetricEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

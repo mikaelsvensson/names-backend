@@ -11,9 +11,31 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>names-backend-service</name>
 
-	<properties>
-		<java.version>14</java.version>
-	</properties>
+	<profiles>
+		<profile>
+			<id>hosted-with-postgres</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>info.mikaelsvensson.babyname</groupId>
+					<artifactId>names-backend-repository-rdms</artifactId>
+					<version>0.0.1-SNAPSHOT</version>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
+			<id>serverless-with-firebase</id>
+			<dependencies>
+				<dependency>
+					<groupId>info.mikaelsvensson.babyname</groupId>
+					<artifactId>names-backend-repository-firestore</artifactId>
+					<version>0.0.1-SNAPSHOT</version>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
 
 	<dependencies>
 		<dependency>
@@ -22,33 +44,14 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jdbc</artifactId>
+			<groupId>info.mikaelsvensson.babyname</groupId>
+			<artifactId>names-backend-core</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.liquibase</groupId>
-			<artifactId>liquibase-core</artifactId>
 		</dependency>
 
 		<!-- For displaying QR codes: -->
@@ -62,13 +65,6 @@
 			<groupId>com.google.zxing</groupId>
 			<artifactId>javase</artifactId>
 			<version>3.3.0</version>
-		</dependency>
-
-		<!-- Similarities -->
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-text</artifactId>
-			<version>1.2</version>
 		</dependency>
 
 		<!-- Generate email bodies -->

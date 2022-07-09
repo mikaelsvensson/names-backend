@@ -77,7 +77,9 @@ public class AuthController {
             return userRepository.getByProvider(provider, providerUserId);
         } catch (UserException e) {
             try {
-                return userRepository.addFromProvider(provider, providerUserId);
+                User user = userRepository.addFromProvider(provider, providerUserId);
+                metrics.logEvent(MetricEvent.USER_ADDED);
+                return user;
             } catch (UserException userException) {
                 throw new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
             }

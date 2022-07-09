@@ -1,5 +1,6 @@
 package info.mikaelsvensson.babyname.service.controller;
 
+import info.mikaelsvensson.babyname.service.repository.RepositoryHealthcheck;
 import info.mikaelsvensson.babyname.service.util.email.EmailSender;
 import info.mikaelsvensson.babyname.service.util.email.EmailSenderException;
 import info.mikaelsvensson.babyname.service.util.template.Template;
@@ -9,12 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Collections;
 
 @RestController
 @RequestMapping("admin")
@@ -23,12 +21,12 @@ public class AdminController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AdminController.class);
 
     private final EmailSender sender;
-    private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    public AdminController(@Autowired EmailSender sender,
-                           @Autowired NamedParameterJdbcTemplate jdbcTemplate) {
+    private final RepositoryHealthcheck repositoryHealthcheck;
+
+    public AdminController(@Autowired EmailSender sender, @Autowired RepositoryHealthcheck repositoryHealthcheck) {
         this.sender = sender;
-        this.jdbcTemplate = jdbcTemplate;
+        this.repositoryHealthcheck = repositoryHealthcheck;
     }
 
     @PostMapping("test-mail")
@@ -55,10 +53,7 @@ public class AdminController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void ping() {
         try {
-            final var isResultReturned = jdbcTemplate.queryForRowSet("SELECT 1", Collections.emptyMap()).next();
-            if (!isResultReturned) {
-                throw new Exception("Could not ping database (no result returned)");
-            }
+            repositoryHealthcheck.ping();
         } catch (Throwable e) {
             LOGGER.error("Could not ping database", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
