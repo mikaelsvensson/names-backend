@@ -1,19 +1,19 @@
 package info.mikaelsvensson.babyname.service.model.name;
 
 public class VotesProperties {
-    private final Integer selfVoteValue;
-    private final Integer partnerVoteValue;
+    private final Long selfVoteValue;
+    private final Long partnerVoteValue;
 
-    public VotesProperties(Integer selfVoteValue, Integer partnerVoteValue) {
+    public VotesProperties(Long selfVoteValue, Long partnerVoteValue) {
         this.selfVoteValue = selfVoteValue;
         this.partnerVoteValue = partnerVoteValue;
     }
 
-    public Integer getSelfVoteValue() {
+    public Long getSelfVoteValue() {
         return selfVoteValue;
     }
 
-    public Integer getPartnerVoteValue() {
+    public Long getPartnerVoteValue() {
         return partnerVoteValue;
     }
 }

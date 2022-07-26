@@ -19,4 +19,13 @@ public enum Country {
     public String getCountryCode() {
         return countryCode;
     }
+
+    public static Country fromCountryCode(String countryCode) {
+        for (Country value : values()) {
+            if (value.countryCode.equals(countryCode)) {
+                return value;
+            }
+        }
+        throw new IllegalArgumentException(String.format("%s is not a value country code.", countryCode));
+    }
 }

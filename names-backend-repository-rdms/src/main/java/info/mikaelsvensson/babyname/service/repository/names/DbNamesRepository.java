@@ -155,8 +155,8 @@ public class DbNamesRepository implements NamesRepository {
                 }
                 if (request.votes != null && request.votes.returned) {
                     currentName.setVotes(new VotesProperties(
-                            request.votes.selfUserId != null ? getDouble(rs, "votes__self_vote_value").map(Double::intValue).orElse(null) : null,
-                            request.votes.partnerUserId != null ? getDouble(rs, "votes__partner_vote_value").map(Double::intValue).orElse(null) : null
+                            request.votes.selfUserId != null ? getDouble(rs, "votes__self_vote_value").map(Double::longValue).orElse(null) : null,
+                            request.votes.partnerUserId != null ? getDouble(rs, "votes__partner_vote_value").map(Double::longValue).orElse(null) : null
                     ));
                 }
 
