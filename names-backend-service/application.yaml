@@ -1,0 +1,32 @@
+spring:
+  profiles:
+    active:
+      - db
+      - email-mailgun
+      - localhttps
+#      - metrics-report
+
+server:
+  port: "${PORT:8080}"
+
+actions:
+  qrUrlTemplate: "https://localhost:8080/#/{actionId}"
+  verifyEmailUrlTemplate: "https://localhost:8080/#/{actionId}"
+
+jwt:
+  secret: SET_IN_DOT_ENV_FILE
+
+facebook:
+  secret: SET_IN_DOT_ENV_FILE
+  deleteDataCallbackUrlTemplate: "https://localhost:8443/profile/delete-facebook-data-request/{actionId}"
+  deleteDataStatusUrlTemplate: "https://localhost:8080/#/{actionId}"
+
+admin:
+  testMail:
+    to: SET_IN_DOT_ENV_FILE
+  user:
+    username: SET_IN_DOT_ENV_FILE
+    password: SET_IN_DOT_ENV_FILE
+
+anonymousAuthenticator:
+  userLimit: 10

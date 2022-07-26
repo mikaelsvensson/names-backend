@@ -1,0 +1,4 @@
+metricsReport:
+  to: SET_IN_DOT_ENV_FILE
+  schedule: "0 * * * * *"     # Every minute
+#  schedule: "0 13 20 * * *"   # At 20:13 every day

@@ -1,0 +1,4 @@
+mailgun:
+  from: SET_IN_DOT_ENV_FILE
+  endpoint: SET_IN_DOT_ENV_FILE
+  apiKey: SET_IN_DOT_ENV_FILE

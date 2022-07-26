@@ -1,0 +1,12 @@
+spring:
+  mail:
+    host: SET_IN_DOT_ENV_FILE
+    port: SET_IN_DOT_ENV_FILE
+    username: SET_IN_DOT_ENV_FILE
+    password: SET_IN_DOT_ENV_FILE
+    properties:
+      mail:
+        smtp:
+          auth: true
+        starttls:
+          enable: true
