@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@ActiveProfiles({"test", "email-smtp", "db"})
+@ActiveProfiles({"test", "email-smtp"})
 class AnonymousAuthenticatorControllerTest {
     @Autowired
     private MockMvc mockMvc;

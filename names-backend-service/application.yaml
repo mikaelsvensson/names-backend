@@ -1,7 +1,6 @@
 spring:
   profiles:
     active:
-      - db
       - email-mailgun
       - localhttps
 #      - metrics-report
