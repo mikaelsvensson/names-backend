@@ -11,7 +11,6 @@ import info.mikaelsvensson.babyname.service.util.IdUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.support.ResourcePatternUtils;
-import org.springframework.scheduling.TaskScheduler;
 
 import java.io.IOException;
 
@@ -33,9 +32,7 @@ class DstNameImporterTest {
         final var importer = new DstNameImporter(
                 namesRepository,
                 mock(UserRepository.class),
-                false,
-                ResourcePatternUtils.getResourcePatternResolver(new DefaultResourceLoader()).getResources("classpath:names/dk/*.html"),
-                mock(TaskScheduler.class)
+                ResourcePatternUtils.getResourcePatternResolver(new DefaultResourceLoader()).getResources("classpath:names/dk/*.html")
         );
 
         // ACT

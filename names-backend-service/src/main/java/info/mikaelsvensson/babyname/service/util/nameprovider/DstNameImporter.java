@@ -8,11 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileCopyUtils;
 
@@ -20,7 +16,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,7 +24,6 @@ import java.util.regex.Pattern;
 @Component
 public class DstNameImporter extends AbstractNameImporter {
 
-    public static final int BOOT_ORDER = 20;
     private static final int COUNT = 250;
 
     private final Pattern patternGirlsSection = Pattern.compile("<caption>Girl's names</caption>.*?<tbody>(.*?)</tbody>", Pattern.DOTALL);
@@ -40,13 +34,9 @@ public class DstNameImporter extends AbstractNameImporter {
     public DstNameImporter(
             @Autowired NamesRepository namesRepository,
             @Autowired UserRepository userRepository,
-            @Value("${dstImporter.onStart:true}") boolean onStart,
-            @Value("classpath:names/dk/*.html") Resource[] databases,
-            @Autowired TaskScheduler scheduler) {
+            @Value("classpath:names/dk/*.html") Resource[] databases) {
         super(SYSTEM_NAME, namesRepository, userRepository);
-        this.onStart = onStart;
         this.databases = databases;
-        this.scheduler = scheduler;
     }
 
     private static class NamePopularity {
@@ -58,24 +48,9 @@ public class DstNameImporter extends AbstractNameImporter {
 
     public static final String SYSTEM_NAME = "dstImporter";
 
-    private final boolean onStart;
-
     private final Resource[] databases;
 
-    private final TaskScheduler scheduler;
-
-    // About event listener: https://www.baeldung.com/running-setup-logic-on-startup-in-spring
-    @EventListener
-    @Order(BOOT_ORDER)
-    public void onApplicationEvent(ContextRefreshedEvent event) {
-        if (!onStart) {
-            LOGGER.info("DST data sync skipped.");
-            return;
-        }
-        scheduler.schedule(this::load, Instant.now().plusSeconds(1));
-    }
-
-    void load() {
+    public void load() {
         LOGGER.info("DST data sync started.");
         final var fileEntries = new HashMap<String, NamePopularity>();
         for (Resource database : databases) {

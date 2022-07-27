@@ -8,45 +8,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ResourceUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Component
 public class SsbNameImporter extends AbstractNameImporter {
 
-    public static final int BOOT_ORDER = 20;
     private static final int COUNT = 250;
 
     public SsbNameImporter(
             @Autowired NamesRepository namesRepository,
             @Autowired UserRepository userRepository,
-            @Value("${ssbImporter.onStart:true}") boolean onStart,
             @Value("classpath:names/no/boys.csv") Resource databaseBoys,
-            @Value("classpath:names/no/girls.csv") Resource databaseGirls,
-            @Autowired TaskScheduler scheduler) {
+            @Value("classpath:names/no/girls.csv") Resource databaseGirls) {
         super(SYSTEM_NAME, namesRepository, userRepository);
-        this.onStart = onStart;
         this.databaseBoys = databaseBoys;
         this.databaseGirls = databaseGirls;
-        this.scheduler = scheduler;
     }
 
     private static class NamePopularity {
@@ -58,24 +45,10 @@ public class SsbNameImporter extends AbstractNameImporter {
 
     public static final String SYSTEM_NAME = "ssbImporter";
 
-    private final boolean onStart;
-
     private final Resource databaseBoys;
     private final Resource databaseGirls;
-    private final TaskScheduler scheduler;
 
-    // About event listener: https://www.baeldung.com/running-setup-logic-on-startup-in-spring
-    @EventListener
-    @Order(BOOT_ORDER)
-    public void onApplicationEvent(ContextRefreshedEvent event) {
-        if (!onStart) {
-            LOGGER.info("SSB data sync skipped.");
-            return;
-        }
-        scheduler.schedule(this::load, Instant.now().plusSeconds(1));
-    }
-
-    void load() {
+    public void load() {
         LOGGER.info("SSB data sync started.");
         final var fileEntries = new HashMap<String, NamePopularity>();
         for (Resource database : new Resource[]{databaseBoys, databaseGirls}) {

@@ -37,10 +37,4 @@ CMD ["java",                                           \
     "-Djava.security.egd=file:/dev/./urandom",         \
     "-jar",                                            \
     "service.jar",                                     \
-    "--spring.liquibase.enabled=false",                \
-    "--scbImporter.onStart=false",                     \
-    "--ssbImporter.onStart=false",                     \
-    "--ssaImporter.onStart=false",                     \
-    "--dstImporter.onStart=false",                     \
-    "--avoindataImporter.onStart=false",               \
-    "--syllableUpdater.onStart=false" ]
+    "--spring.liquibase.enabled=false" ]

@@ -8,7 +8,6 @@ import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.scheduling.TaskScheduler;
 
 import java.io.IOException;
 
@@ -27,10 +26,8 @@ class SsbNameImporterTest {
         final var importer = new SsbNameImporter(
                 namesRepository,
                 mock(UserRepository.class),
-                false,
                 new DefaultResourceLoader().getResource("classpath:names/no/boys.csv"),
-                new DefaultResourceLoader().getResource("classpath:names/no/girls.csv"),
-                mock(TaskScheduler.class)
+                new DefaultResourceLoader().getResource("classpath:names/no/girls.csv")
         );
 
         // ACT

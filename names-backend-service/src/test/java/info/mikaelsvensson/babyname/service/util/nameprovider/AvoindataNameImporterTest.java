@@ -8,9 +8,6 @@ import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.DefaultResourceLoader;
-import org.springframework.core.io.support.ResourcePatternUtils;
-import org.springframework.scheduling.TaskScheduler;
-import org.springframework.util.ResourceUtils;
 
 import java.io.IOException;
 
@@ -29,10 +26,8 @@ class AvoindataNameImporterTest {
         final var importer = new AvoindataNameImporter(
                 namesRepository,
                 mock(UserRepository.class),
-                false,
                 new DefaultResourceLoader().getResource("classpath:names/fi/men-20210205.csv"),
-                new DefaultResourceLoader().getResource("classpath:names/fi/women-20210205.csv"),
-                mock(TaskScheduler.class)
+                new DefaultResourceLoader().getResource("classpath:names/fi/women-20210205.csv")
         );
 
         // ACT

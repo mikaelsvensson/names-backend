@@ -85,8 +85,22 @@ To avoid abuse, all test mails will be sent to the hardcoded address specified i
 **Step 2**. Run this command:
 
     $ curl -k -X POST -u admin:*** https://localhost:8443/admin/test-mail
-    
-Note that the above command assumes you have enabled https locally.
+
+Note: The command above assumes you've enabled https locally.
+
+## Import Popular Names 
+
+The service comes bundles with thousands of popular names from various countries.
+
+You can enable/import them using these `curl` commands:
+
+ * Finnish names:   `curl -k -X POST -u admin:*** https://localhost:8443/admin/import/avoindata`
+ * Danish names:    `curl -k -X POST -u admin:*** https://localhost:8443/admin/import/dst`
+ * Swedish names:   `curl -k -X POST -u admin:*** https://localhost:8443/admin/import/scb`
+ * USA names:       `curl -k -X POST -u admin:*** https://localhost:8443/admin/import/ssa`
+ * Norwegian names: `curl -k -X POST -u admin:*** https://localhost:8443/admin/import/ssb`
+
+Note: The commands above assume you've enabled https locally.
 
 ## Ping
 
@@ -94,3 +108,5 @@ The service has a "ping" endpoint for verifying that the service is up-and-runni
 database connection.
 
     $ curl -k -X GET -u admin:*** https://localhost:8443/admin/ping
+
+Note: The commands above assume you've enabled https locally.

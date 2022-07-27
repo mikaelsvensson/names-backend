@@ -203,15 +203,17 @@ public class FirestoreNamesRepository implements NamesRepository {
 
         HashMap<String, Object> props = new HashMap<>();
         props.put("name", newName.getName());
-        HashMap<String, Map<String, Object>> demographicsMap = demographics.entrySet().stream().collect(
-                HashMap::new,
-                (acc, keyAndValue) -> {
-                    String countryCode = keyAndValue.getKey().getCountryCode();
-                    PopulationProperties properties = keyAndValue.getValue();
-                    acc.put(countryCode, getDemographicsMap(properties));
-                },
-                HashMap::putAll);
-        props.put("demographics", demographicsMap);
+        if (demographics != null) {
+            HashMap<String, Map<String, Object>> demographicsMap = demographics.entrySet().stream().collect(
+                    HashMap::new,
+                    (acc, keyAndValue) -> {
+                        String countryCode = keyAndValue.getKey().getCountryCode();
+                        PopulationProperties properties = keyAndValue.getValue();
+                        acc.put(countryCode, getDemographicsMap(properties));
+                    },
+                    HashMap::putAll);
+            props.put("demographics", demographicsMap);
+        }
         props.put("metrics", getMetricsMap(getMetrics(name)));
         props.put("owner_user_ids", users.stream().map(User::getId).collect(Collectors.toList()));
         db.collection("names").document(newName.getId()).set(props);
