@@ -1,9 +1,15 @@
 package info.mikaelsvensson.babyname.service.controller;
 
 import info.mikaelsvensson.babyname.service.repository.RepositoryHealthcheck;
+import info.mikaelsvensson.babyname.service.repository.anonymousauthenticator.AnonymousAuthenticatorException;
+import info.mikaelsvensson.babyname.service.repository.names.NameException;
+import info.mikaelsvensson.babyname.service.repository.relationships.RelationshipException;
+import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
 import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
 import info.mikaelsvensson.babyname.service.util.email.EmailSender;
 import info.mikaelsvensson.babyname.service.util.email.EmailSenderException;
+import info.mikaelsvensson.babyname.service.util.importer.DatabaseSnapshot;
+import info.mikaelsvensson.babyname.service.util.importer.Importer;
 import info.mikaelsvensson.babyname.service.util.nameprovider.*;
 import info.mikaelsvensson.babyname.service.util.template.Template;
 import info.mikaelsvensson.babyname.service.util.template.TemplateException;
@@ -12,9 +18,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @RestController
 @RequestMapping("admin")
@@ -31,6 +43,7 @@ public class AdminController {
     private final SsaNameImporter ssaNameImporter;
     private final SsbNameImporter ssbNameImporter;
     private final SyllableUpdater syllableUpdater;
+    private final Importer importer;
 
     public AdminController(
             @Autowired EmailSender sender,
@@ -40,7 +53,8 @@ public class AdminController {
             @Autowired ScbNameImporter scbNameImporter,
             @Autowired SsaNameImporter ssaNameImporter,
             @Autowired SsbNameImporter ssbNameImporter,
-            @Autowired SyllableUpdater syllableUpdater) {
+            @Autowired SyllableUpdater syllableUpdater,
+            @Autowired Importer importer) {
         this.sender = sender;
         this.repositoryHealthcheck = repositoryHealthcheck;
         this.avoindataNameImporter = avoindataNameImporter;
@@ -49,6 +63,7 @@ public class AdminController {
         this.ssaNameImporter = ssaNameImporter;
         this.ssbNameImporter = ssbNameImporter;
         this.syllableUpdater = syllableUpdater;
+        this.importer = importer;
     }
 
     @PostMapping("import/avoindata")
@@ -79,6 +94,21 @@ public class AdminController {
     public void importSsb(Authentication authentication) {
         LOGGER.info("User {} wants to import data from SSB", authentication.getName());
         ssbNameImporter.load();
+    }
+
+    @PostMapping(value = "import/postgres-sql-export", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void importPostgresExport(Authentication authentication, @RequestParam("file") MultipartFile file) {
+        LOGGER.info("User {} wants to import data from a Postgres export file", authentication.getName());
+        LOGGER.info(String.valueOf(file.getSize()));
+
+        try {
+            Path path = Files.createTempFile("postgres-sql-export", ".sql");
+            file.transferTo(path);
+            importer.doImport(DatabaseSnapshot.readSnapshot(path));
+        } catch (IOException | RelationshipException | AnonymousAuthenticatorException | NameException | VoteException e) {
+            LOGGER.error("Could import data", e);
+        }
     }
 
     @PostMapping("update-syllable-counts")

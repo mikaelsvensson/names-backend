@@ -9,8 +9,6 @@ WORKDIR /app
 COPY pom.xml .
 COPY names-backend-core/src ./names-backend-core/src
 COPY names-backend-core/pom.xml ./names-backend-core/pom.xml
-COPY names-backend-importer/src ./names-backend-importer/src
-COPY names-backend-importer/pom.xml ./names-backend-importer/pom.xml
 COPY names-backend-repository-firestore/src ./names-backend-repository-firestore/src
 COPY names-backend-repository-firestore/pom.xml ./names-backend-repository-firestore/pom.xml
 COPY names-backend-repository-rdms/src ./names-backend-repository-rdms/src

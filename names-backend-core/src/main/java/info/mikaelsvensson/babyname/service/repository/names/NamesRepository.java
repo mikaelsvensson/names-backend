@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 
 @Repository
@@ -18,6 +19,8 @@ public interface NamesRepository {
     Map<String, String> allNames() throws NameException;
 
     Name add(String name, User user) throws NameException;
+
+    Name add(String name, Map<Country, PopulationProperties> demographics, Set<User> users) throws NameException;
 
     Name get(String nameId, User user) throws NameException;
 

@@ -135,6 +135,21 @@ You can enable/import them using these `curl` commands:
 
 Note: The commands above assume you've enabled https locally.
 
+## Import Postgres Database Dump
+
+If you need to migrated from an on-prem Postgres solution to a cloud-only Firestore solution...
+
+Export the data from your Postgres database:
+
+    $ pg_dump -U ${USER} ${DATABASE} -F p -f ${FILE}
+
+Import data into your new service:
+
+    $ curl -k -X POST -u admin:*** -F file=@${FILE} https://localhost:8443/admin/import/postgres-sql-export
+
+Note: The `-k` flag is only necessary when testing locally with self-signed https certificate
+(e.g. when you're using the `localhttps` Spring profile).
+
 ## Ping
 
 The service has a "ping" endpoint for verifying that the service is up-and-running with a working

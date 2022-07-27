@@ -1,7 +1,6 @@
 /.idea/
 /names-backend-service/target/
 /names-backend-core/target/
-/names-backend-importer/target/
 /names-backend-repository-rdms/target/
 /names-backend-repository-firestore/target/
 *.iml

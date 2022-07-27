@@ -115,6 +115,22 @@ public class DbNamesRepository implements NamesRepository {
         return obj;
     }
 
+    @Override
+    public Name add(String name, Map<Country, PopulationProperties> demographics, Set<User> users) throws NameException {
+        Name newName = null;
+        for (User user : users) {
+            newName = add(name, user);
+        }
+        Objects.requireNonNull(newName);
+
+        for (Map.Entry<Country, PopulationProperties> entry : demographics.entrySet()) {
+            var country = entry.getKey();
+            var populationProperties = entry.getValue();
+            setDemographicsProperties(newName, country, populationProperties);
+        }
+        return newName;
+    }
+
     private static class NamesResultSetIterator implements ResultSetExtractor<Integer> {
         private final Consumer<Name> nameConsumer;
         private final NamesRequest request;

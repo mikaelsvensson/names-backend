@@ -4,6 +4,10 @@ spring:
       - email-mailgun
       - localhttps
 #      - metrics-report
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 server:
   port: "${PORT:8080}"
