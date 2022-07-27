@@ -27,6 +27,9 @@
 		</profile>
 		<profile>
 			<id>serverless-with-firebase</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
 			<dependencies>
 				<dependency>
 					<groupId>info.mikaelsvensson.babyname</groupId>

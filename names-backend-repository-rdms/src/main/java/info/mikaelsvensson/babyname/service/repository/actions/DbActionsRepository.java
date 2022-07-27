@@ -11,6 +11,7 @@ import info.mikaelsvensson.babyname.service.util.IdUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -25,6 +26,7 @@ import java.util.Map;
 
 @Repository
 @Service
+@Profile("db-rdms")
 public class DbActionsRepository implements ActionsRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DbActionsRepository.class);

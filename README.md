@@ -18,6 +18,10 @@ Add this to your `application.yaml`:
         key-store-provider: SUN
         key-store-type: JKS
 
+You also need to activate the Spring profile `localhttps` by adding this to your start command:
+
+    --spring.profiles.active=localhttps,...
+
 The key store file `ssl-server.jks` already exists in `names-backend-service/src/main/resources/ssl-server.jks`, so no need to create it.
 
 For reference, this is how `ssl-server.jks` was once created:
@@ -25,6 +29,35 @@ For reference, this is how `ssl-server.jks` was once created:
     keytool -genkey -alias selfsigned_localhost_sslserver -keyalg RSA -keysize 2048 -validity 700 -keypass changeit -storepass changeit -keystore ssl-server.jks
 
 If using Chrome, you may also want to "allow insecure localhost" when testing the front-end locally. Open Chrome and go to this "address": `chrome://flags/#allow-insecure-localhost`.
+
+## Postgres or Firestore
+
+The service supports two databases:
+ * Postgres (self-hosted SQL database)
+ * Firestore (cloud-based NoSQL database)
+
+### Choose database
+
+Select database to use by _enabling_ one of two Spring profiles:
+
+* Select Postgres: `--spring.profiles.active=db-firestore,...`
+* Select Firestore: `--spring.profiles.active=db-rdms,...`
+
+### Exclude support for one of the databases from JAR file
+
+You may want to only support for one database when building and packaging the service, for example when
+building the JAR file for your production environment.
+
+You can exclude support for the unnecessary database by _deactivating_ the corresponding Maven profile:
+
+ * Exclude Postgres support: `$ mvn package -P !hosted-with-postgres`
+ 
+ * Exclude Firestore support: `$ mvn package -P !serverless-with-firebase`
+
+Approximate JAR sizes:
+ * Only Firestore support (Postgres excluded): 75 MB 
+ * Only Postgres support (Firestore excluded): 32 MB
+ * Both: 84 MB
 
 ## Email
 
@@ -36,7 +69,7 @@ This option can be used to have the service send emails using pretty much any ma
 
 **Step 1**. Activate the profile `email-smtp` by adding this to your start command:
 
-    --spring.profiles.active=email-smtp
+    --spring.profiles.active=email-smtp,...
 
 **Step 2**. Add this configuration to `application-email-smtp.yaml`:
 
@@ -56,7 +89,7 @@ This is the preferred option if you have an account with [Mailgun](https://www.m
 
 **Step 1**. Activate the profile `email-mailgun` by adding this to your start command:
 
-    --spring.profiles.active=email-mailgun
+    --spring.profiles.active=email-mailgun,...
 
 **Step 2**. Add this configuration to `application-email-mailgun.yaml`:
 

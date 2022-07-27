@@ -6,6 +6,7 @@ import info.mikaelsvensson.babyname.service.repository.names.NameAddedEvent;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -21,6 +22,7 @@ import java.util.regex.Pattern;
 
 @Repository
 @Service
+@Profile("db-rdms")
 public class DbUserRepository implements UserRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;

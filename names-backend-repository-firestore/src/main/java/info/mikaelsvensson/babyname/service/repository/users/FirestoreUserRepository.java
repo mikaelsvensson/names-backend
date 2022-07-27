@@ -9,6 +9,7 @@ import info.mikaelsvensson.babyname.service.model.User;
 import info.mikaelsvensson.babyname.service.model.UserProvider;
 import info.mikaelsvensson.babyname.service.repository.Datastore;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ import java.util.concurrent.ExecutionException;
 
 @Repository
 @Service
+@Profile("db-firestore")
 public class FirestoreUserRepository implements UserRepository {
 
     private Firestore db;

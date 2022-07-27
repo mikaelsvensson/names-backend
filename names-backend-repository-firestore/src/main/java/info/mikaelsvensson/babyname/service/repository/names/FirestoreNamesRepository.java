@@ -16,6 +16,7 @@ import info.mikaelsvensson.babyname.service.util.IdUtils;
 import info.mikaelsvensson.babyname.service.util.NameFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 
 @Repository
 @Service
+@Profile("db-firestore")
 public class FirestoreNamesRepository implements NamesRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FirestoreNamesRepository.class);

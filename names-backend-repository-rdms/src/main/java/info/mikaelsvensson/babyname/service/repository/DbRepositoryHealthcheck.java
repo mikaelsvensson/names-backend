@@ -1,12 +1,14 @@
 package info.mikaelsvensson.babyname.service.repository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 
 @Service
+@Profile("db-rdms")
 public class DbRepositoryHealthcheck implements RepositoryHealthcheck {
     private final NamedParameterJdbcTemplate jdbcTemplate;
 

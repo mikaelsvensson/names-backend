@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 
 @Repository
 @Service
+@Profile("db-rdms")
 public class DbNamesRepository implements NamesRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DbNamesRepository.class);

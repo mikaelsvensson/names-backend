@@ -9,6 +9,7 @@ import info.mikaelsvensson.babyname.service.repository.Datastore;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 
 @Repository
 @Service
+@Profile("db-firestore")
 public class FirestoreActionsRepository implements ActionsRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FirestoreActionsRepository.class);

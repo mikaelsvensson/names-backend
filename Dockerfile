@@ -18,7 +18,7 @@ COPY names-backend-repository-rdms/pom.xml ./names-backend-repository-rdms/pom.x
 COPY names-backend-service/src ./names-backend-service/src
 COPY names-backend-service/pom.xml ./names-backend-service/pom.xml
 
-RUN mvn package -Pserverless-with-firebase -DskipTests
+RUN mvn package -P!hosted-with-postgres -DskipTests
 
 
 #
@@ -33,8 +33,8 @@ WORKDIR /app
 COPY --from=builder /app/names-backend-service/target/names-backend-service-*.jar service.jar
 COPY names-backend-service/application*.yaml .
 
-CMD ["java",                                           \
-    "-Djava.security.egd=file:/dev/./urandom",         \
-    "-jar",                                            \
-    "service.jar",                                     \
+CMD ["java",                                               \
+    "-Djava.security.egd=file:/dev/./urandom",             \
+    "-jar",                                                \
+    "service.jar",                                         \
     "--spring.liquibase.enabled=false" ]
