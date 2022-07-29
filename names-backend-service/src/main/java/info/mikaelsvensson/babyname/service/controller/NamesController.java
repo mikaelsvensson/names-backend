@@ -15,7 +15,6 @@ import info.mikaelsvensson.babyname.service.util.Recommender;
 import info.mikaelsvensson.babyname.service.util.RecommenderException;
 import info.mikaelsvensson.babyname.service.util.SyllableUpdater;
 import info.mikaelsvensson.babyname.service.util.nameprovider.AbstractNameImporter;
-import info.mikaelsvensson.babyname.service.util.similarity.SimilarityCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +45,6 @@ public class NamesController {
 
     @Autowired
     private VotesRepository votesRepository;
-
-    @Autowired
-    private SimilarityCalculator similarityCalculator;
 
     @Autowired
     private SyllableUpdater syllableUpdater;
@@ -224,15 +220,12 @@ public class NamesController {
             final var userId = getUserId(authentication);
             final var user = userId != null ? userRepository.get(userId) : null;
 
-            final var refName = namesRepository.get(nameId, user);
-            final var otherNames = namesRepository.allNames();
-            final List<Name> similarNames = similarityCalculator.get(refName.getName(), otherNames)
-                    .entrySet()
+            final var similarNameIds = namesRepository.getSimilar(nameId, user);
+            if (similarNameIds.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Similar names have not been calculated yet.");
+            }
+            return similarNameIds.get()
                     .stream()
-                    .sorted((o1, o2) ->
-                            o2.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum() -
-                                    o1.getValue().values().stream().mapToInt(value -> (int) (value * 100_000)).sum())
-                    .map(Map.Entry::getKey)
                     .map(id -> {
                         try {
                             return namesRepository.get(id, user);
@@ -244,7 +237,6 @@ public class NamesController {
                     })
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
-            return similarNames;
         } catch (NameException | UserException e) {
             LOGGER.warn("Could get similar names", e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());

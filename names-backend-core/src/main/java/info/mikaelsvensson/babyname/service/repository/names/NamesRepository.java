@@ -7,6 +7,7 @@ import info.mikaelsvensson.babyname.service.model.name.PopulationProperties;
 import info.mikaelsvensson.babyname.service.repository.names.request.NamesRequest;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -29,4 +30,6 @@ public interface NamesRepository {
     void setDemographicsProperties(Name name, Country country, PopulationProperties properties) throws NameException;
 
     void setMetricsProperties(Name name, MetricsProperties properties) throws NameException;
+
+    Optional<List<String>> getSimilar(String nameId, User user) throws NameException;
 }

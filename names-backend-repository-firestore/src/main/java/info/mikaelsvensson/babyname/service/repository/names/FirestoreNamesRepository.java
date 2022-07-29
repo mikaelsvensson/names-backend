@@ -1,6 +1,5 @@
 package info.mikaelsvensson.babyname.service.repository.names;
 
-import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.common.collect.ImmutableMap;
 import info.mikaelsvensson.babyname.service.model.User;
@@ -14,18 +13,20 @@ import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.repository.votes.FirestoreVotesRepository;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
 import info.mikaelsvensson.babyname.service.util.NameFeature;
+import info.mikaelsvensson.babyname.service.util.Ngrams;
+import info.mikaelsvensson.babyname.service.util.similarity.SimilarityCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
+import java.text.NumberFormat;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Repository
 @Service
@@ -35,6 +36,15 @@ public class FirestoreNamesRepository implements NamesRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(FirestoreNamesRepository.class);
     private final Firestore db;
     private final FirestoreVotesRepository votesRepository;
+    private HashMap<String, String> names = null;
+
+    static class FirestoreName extends Name {
+        SimilarityProperties similarity;
+
+        public FirestoreName(String name, String id) {
+            super(name, id);
+        }
+    }
 
     public FirestoreNamesRepository() {
         db = Datastore.get();
@@ -145,8 +155,7 @@ public class FirestoreNamesRepository implements NamesRepository {
                 final Map<String, Long> selfVotes = request.votes.returned && request.votes.selfUserId != null ? votes.stream().filter(vote -> vote.getUserId().equals(request.votes.selfUserId)).collect(Collectors.toMap(Vote::getNameId, Vote::getValue)) : Collections.emptyMap();
                 final Map<String, Long> partnerVotes = request.votes.returned && request.votes.partnerUserId != null ? votes.stream().filter(vote -> vote.getUserId().equals(request.votes.partnerUserId)).collect(Collectors.toMap(Vote::getNameId, Vote::getValue)) : Collections.emptyMap();
                 for (DocumentSnapshot nameSnapshot : db.getAll(nameIds.toArray(new DocumentReference[0])).get()) {
-                    final var name = toName(nameSnapshot, selfVotes, partnerVotes);
-                    nameConsumer.accept(name);
+                    nameConsumer.accept(toName(nameSnapshot, selfVotes, partnerVotes));
                 }
                 return;
             }
@@ -160,8 +169,8 @@ public class FirestoreNamesRepository implements NamesRepository {
         }
     }
 
-    private Name toName(DocumentSnapshot nameSnapshot, Map<String, Long> selfVotes, Map<String, Long> partnerVotes) {
-        var name = new Name(nameSnapshot.get("name", String.class), nameSnapshot.getId());
+    private FirestoreName toName(DocumentSnapshot nameSnapshot, Map<String, Long> selfVotes, Map<String, Long> partnerVotes) {
+        var name = new FirestoreName(nameSnapshot.get("name", String.class), nameSnapshot.getId());
 
         Double genderValue = nameSnapshot.get(FieldPath.of("demographics", Country.SWEDEN.getCountryCode(), "percentWomen"), Double.class);
         Double popularityValue = nameSnapshot.get(FieldPath.of("demographics", Country.SWEDEN.getCountryCode(), "percentOfPopulation"), Double.class);
@@ -176,21 +185,34 @@ public class FirestoreNamesRepository implements NamesRepository {
                     partnerVotes.get(name.getId())
             ));
         }
+        if (nameSnapshot.contains("similarity")) {
+            name.similarity = new SimilarityProperties(
+                    (List<String>) nameSnapshot.get(FieldPath.of("similarity", "nameIds")),
+                    Instant.ofEpochMilli((Long) nameSnapshot.get(FieldPath.of("similarity", "createdAt")))
+            );
+        }
         return name;
     }
 
 
     @Override
     public synchronized Map<String, String> allNames() throws NameException {
-        var names = new HashMap<String, String>();
-        db.collection("names").listDocuments().forEach(documentReference -> {
+        if (names == null) {
             try {
-                names.put(documentReference.getId(), documentReference.get().get().getString("name"));
+                names = new HashMap<>();
+                db.collection("names").select("name").get().get().forEach(documentReference -> {
+                    names.put(documentReference.getId(), documentReference.getString("name"));
+                });
             } catch (InterruptedException | ExecutionException e) {
                 LOGGER.error(e.getMessage());
+                throw new NameException(e.getMessage());
             }
-        });
+        }
         return names;
+    }
+
+    private void onDatabaseChange() {
+        names = null;
     }
 
     @Override
@@ -217,13 +239,15 @@ public class FirestoreNamesRepository implements NamesRepository {
             props.put("demographics", demographicsMap);
         }
         props.put("metrics", getMetricsMap(getMetrics(name)));
+        props.put("similarity", getSimilarityMap(new SimilarityProperties()));
         props.put("owner_user_ids", users.stream().map(User::getId).collect(Collectors.toList()));
         db.collection("names").document(newName.getId()).set(props);
+        onDatabaseChange();
         return newName;
     }
 
     @Override
-    public Name get(String nameId, User user) throws NameException {
+    public FirestoreName get(String nameId, User user) throws NameException {
         try {
             return toName(db.collection("names").document(nameId).get().get(), Collections.emptyMap(), Collections.emptyMap());
         } catch (InterruptedException | ExecutionException e) {
@@ -249,15 +273,66 @@ public class FirestoreNamesRepository implements NamesRepository {
     @Override
     public void setDemographicsProperties(Name name, Country country, PopulationProperties properties) throws NameException {
         db.collection("names").document(name.getId()).update(FieldPath.of("demographics", country.getCountryCode()), getDemographicsMap(properties));
+        onDatabaseChange();
     }
 
     @Override
     public void setMetricsProperties(Name name, MetricsProperties properties) throws NameException {
         db.collection("names").document(name.getId()).update("metrics", getMetricsMap(getMetrics(name.getName())));
+        onDatabaseChange();
+    }
+
+    @Override
+    public Optional<List<String>> getSimilar(String nameId, User user) throws NameException {
+        try {
+            FirestoreName name = get(nameId, user);
+            if (name.similarity == null || name.similarity.getCreatedAt().toEpochMilli() == 0) {
+
+                // Pre-filtering:
+                int syllableCount = NameFeature.syllableCount(name.getName());
+                QuerySnapshot candidatesQuery = db.collection("names")
+                        .select("name")
+                        .whereArrayContainsAny(FieldPath.of("metrics", "ngrams"), getNgrams(name.getName()))
+                        .whereGreaterThanOrEqualTo(FieldPath.of("metrics", "syllableCount"), syllableCount - 1)
+                        .whereLessThanOrEqualTo(FieldPath.of("metrics", "syllableCount"), syllableCount + 1)
+                        .get().get();
+                final var candidateCount = candidatesQuery.size();
+                final var candidates = candidatesQuery.getDocuments()
+                        .stream()
+                        .collect(Collectors.toMap(
+                                DocumentSnapshot::getId,
+                                doc -> Optional.ofNullable(doc.getString("name")).orElse(doc.getId())));
+                SimilarityCalculator calculator = new SimilarityCalculator(candidates);
+                List<String> sortedIds = calculator.getSortedList(name.getName());
+
+                var finalCount = sortedIds.size();
+
+                var ratio = 1.0 * finalCount / candidateCount;
+
+                LOGGER.info("Looked for names similar to {}. Found {} names with shared n-grams. Found {} good ones among these. Candidate selection score: {}", name.getName(), candidateCount, finalCount, NumberFormat.getPercentInstance().format(ratio));
+
+                db.collection("names").document(nameId).update("similarity", getSimilarityMap(new SimilarityProperties(sortedIds, Instant.now())));
+
+                return Optional.of(sortedIds);
+            } else {
+                return Optional.of(name.similarity.getNameIds());
+            }
+
+        } catch (InterruptedException | ExecutionException e) {
+            LOGGER.warn("Could not query database", e);
+            return Optional.empty();
+        }
     }
 
     private MetricsProperties getMetrics(String name) {
-        return new MetricsProperties((double) NameFeature.syllableCount(name));
+        return new MetricsProperties(
+                (double) NameFeature.syllableCount(name),
+                getNgrams(name)
+        );
+    }
+
+    private static List<String> getNgrams(String name) {
+        return Ngrams.get(name.toLowerCase(), new int[]{2}, false);
     }
 
     private Map<String, Object> getMetricsMap(MetricsProperties properties) {
@@ -269,7 +344,14 @@ public class FirestoreNamesRepository implements NamesRepository {
 
         return ImmutableMap.of(
                 "syllableCount", syllableCount,
+                "ngrams", properties.getNgrams(),
                 "length", length.name().toLowerCase());
+    }
+
+    private Map<String, Object> getSimilarityMap(SimilarityProperties properties) {
+        return ImmutableMap.of(
+                "nameIds", properties.getNameIds(),
+                "createdAt", properties.getCreatedAt().toEpochMilli());
     }
 
     private Map<String, Object> getDemographicsMap(PopulationProperties properties) {

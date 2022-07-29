@@ -7,6 +7,7 @@ import info.mikaelsvensson.babyname.service.model.name.PopulationProperties;
 import info.mikaelsvensson.babyname.service.model.name.VotesProperties;
 import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.util.IdUtils;
+import info.mikaelsvensson.babyname.service.util.similarity.SimilarityCalculator;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -426,5 +427,13 @@ public class DbNamesRepository implements NamesRepository {
                 throw new NameException(MessageFormat.format("Could not set metrics for name {0}. {1} rows updaded.", name.getId(), rowsUpdated));
             }
         }
+    }
+
+    @Override
+    public Optional<List<String>> getSimilar(String nameId, User user) throws NameException {
+        final var refName = get(nameId, user);
+        final var otherNames = allNames();
+        final var similarityCalculator = new SimilarityCalculator(otherNames);
+        return Optional.of(similarityCalculator.getSortedList(refName.getName()));
     }
 }

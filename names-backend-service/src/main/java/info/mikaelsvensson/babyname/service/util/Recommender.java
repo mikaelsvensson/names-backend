@@ -9,8 +9,6 @@ import info.mikaelsvensson.babyname.service.repository.names.NamesRepository;
 import info.mikaelsvensson.babyname.service.repository.names.request.*;
 import info.mikaelsvensson.babyname.service.repository.users.UserException;
 import info.mikaelsvensson.babyname.service.repository.users.UserRepository;
-import info.mikaelsvensson.babyname.service.repository.votes.VoteException;
-import info.mikaelsvensson.babyname.service.repository.votes.VotesRepository;
 import info.mikaelsvensson.babyname.service.util.nameprovider.AbstractNameImporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,16 +169,6 @@ public class Recommender {
     }
 
     private Collection<String> ngrams(String input) {
-        final var strings = new ArrayList<String>();
-        for (int substringLength = isUnigramConsidered ? 1 : 2; substringLength <= 3; substringLength++) {
-            for (int pos = 0; pos < input.length() - substringLength + 1; pos++) {
-                strings.add(
-                        (pos > 0 ? "*" : " ") +
-                                input.substring(pos, pos + substringLength) +
-                                (pos < input.length() - substringLength ? "*" : " ")
-                );
-            }
-        }
-        return strings;
+        return Ngrams.get(input, isUnigramConsidered);
     }
 }
